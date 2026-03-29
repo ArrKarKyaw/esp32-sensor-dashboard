@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Elevator Information Dashboard</title>
+    <link rel="stylesheet" href="styles.css" />
+    <script src="/chartjs/chart.umd.min.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <h1 id="app-title">Elevator Information Dashboard</h1>
+        <div id="user-actions" class="user-actions hidden">
+          <span id="username-label"></span>
+          <button id="settings-button" class="button button-secondary hidden">Settings</button>
+          <button id="logout-button" class="button button-secondary">Logout</button>
+        </div>
+        <div class="toolbar-controls">
+          <button id="theme-toggle" class="button button-secondary">Light</button>
+          <select id="language-select" class="button-select">
+            <option value="en">EN</option>
+            <option value="th">TH</option>
+            <option value="my">MY</option>
+            <option value="zh">ZH</option>
+            <option value="vi">VI</option>
+          </select>
+        </div>
+      </header>
+
+      <main>
+        <section id="login-view" class="login-page centered-card">
+          <div class="login-card card">
+            <div class="login-panel">
+              <div class="login-illustration">
+                <div class="illustration-graphic">
+                  <img src="images/elevator.png" alt="Elevator illustration" class="login-image" />
+                </div>
+                <h2>Elevator Monitoring</h2>
+                <p class="info-text">Access your elevator status, history, and device controls through a secure dashboard.</p>
+              </div>
+              <div class="login-form-area">
+                <h2 id="login-title">Sign in</h2>
+                <p id="login-info" class="info-text">Enter your credentials to continue.</p>
+                <form id="login-form">
+                  <label>
+                    Username
+                    <input name="username" id="username" type="text" placeholder="" required />
+                  </label>
+                  <label>
+                    Password
+                    <input name="password" id="password" type="password" placeholder="" required />
+                  </label>
+                  <button type="submit" id="login-button" class="button button-primary">Login</button>
+                </form>
+                <div id="login-error" class="error-text hidden"></div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section id="dashboard-view" class="hidden">
+          <div class="dashboard-grid">
+            <div class="card stat-card">
+              <h3>Temperature</h3>
+              <p id="temperature-value">-- °C</p>
+            </div>
+            <div class="card stat-card">
+              <h3>Humidity</h3>
+              <p id="humidity-value">-- %</p>
+            </div>
+            <div class="card stat-card">
+              <h3>Pressure</h3>
+              <p id="pressure-value">-- hPa</p>
+            </div>
+            <div class="card stat-card">
+              <h3>Latest note</h3>
+              <p id="other-value">No data yet</p>
+            </div>
+          </div>
+
+          <div class="card filter-card">
+            <h2 id="filter-heading">Filter history</h2>
+            <div class="filter-row">
+              <label>
+                Start
+                <input id="start-date" type="datetime-local" />
+              </label>
+              <label>
+                End
+                <input id="end-date" type="datetime-local" />
+              </label>
+              <label>
+                Device
+                <select id="device-select">
+                  <option value="">All devices</option>
+                </select>
+              </label>
+              <button id="filter-button" class="button button-secondary" data-i18n="applyButton">Apply</button>
+            </div>
+            <div class="action-row">
+              <button id="export-csv" class="button button-primary" data-i18n="exportCsv">Download CSV</button>
+              <button id="export-json" class="button button-primary" data-i18n="exportJson">Download JSON</button>
+            </div>
+          </div>
+
+          <div class="card chart-card">
+            <h2 id="chart-heading">Sensor history</h2>
+            <canvas id="history-chart" height="220"></canvas>
+          </div>
+        </section>
+
+        <section id="settings-view" class="hidden">
+          <div class="settings-header">
+            <button type="button" id="settings-back-button" class="button button-secondary">Back to Dashboard</button>
+          </div>
+          <div class="card settings-card">
+            <h2 id="settings-heading">Admin Settings</h2>
+            <p id="settings-info" class="info-text">Create accounts and manage roles for admin, manager, and user access.</p>
+            <form id="create-user-form">
+              <label>
+                Username
+                <input name="username" id="new-username" type="text" required />
+              </label>
+              <label>
+                Password
+                <input name="password" id="new-password" type="password" required />
+              </label>
+              <label>
+                Role
+                <select name="role" id="new-role" required>
+                  <option value="admin">Admin</option>
+                  <option value="manager">Manager</option>
+                  <option value="user" selected>User</option>
+                </select>
+              </label>
+              <button type="submit" id="create-account-button" class="button button-primary">Create Account</button>
+            </form>
+            <div id="settings-error" class="error-text hidden"></div>
+          </div>
+
+          <div class="card settings-card">
+            <h2>ESP32 Device Settings</h2>
+            <p class="info-text">Register or rename ESP32 devices, and track status from each unit.</p>
+            <form id="create-device-form">
+              <label>
+                Device Key
+                <input name="deviceKey" id="new-device-key" type="text" placeholder="esp32-01" required />
+              </label>
+              <label>
+                Device Name
+                <input name="name" id="new-device-name" type="text" placeholder="Main Lobby Sensor" required />
+              </label>
+              <button type="submit" class="button button-primary">Create Device</button>
+            </form>
+            <div id="device-error" class="error-text hidden"></div>
+          </div>
+
+          <div class="card settings-card">
+            <h2>Registered ESP32 Devices</h2>
+            <table class="device-table">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Key</th>
+                  <th>Name</th>
+                  <th>Last Seen</th>
+                  <th>Temp</th>
+                  <th>Hum</th>
+                  <th>Pressure</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="devices-table-body"></tbody>
+            </table>
+          </div>
+
+          <div class="card settings-card">
+            <h2>Existing accounts</h2>
+            <table class="user-table">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Username</th>
+                  <th>Role</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="users-table-body"></tbody>
+            </table>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <script src="script.js?v=2"></script>
+  </body>
+</html>
