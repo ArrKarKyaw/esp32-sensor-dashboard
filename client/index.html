@@ -9,7 +9,7 @@
     <script src="/socket.io/socket.io.js"></script>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js" crossorigin="anonymous"></script>
   </head>
   <body>
     <div class="app-shell">
@@ -46,7 +46,7 @@
               <div class="login-form-area">
                 <h2 id="login-title">Sign in</h2>
                 <p id="login-info" class="info-text">Enter your credentials to continue.</p>
-                <form id="login-form">
+                <form id="login-form" onsubmit="event.preventDefault();">    
                   <label>
                     Username
                     <input name="username" id="username" type="text" placeholder="" required />
