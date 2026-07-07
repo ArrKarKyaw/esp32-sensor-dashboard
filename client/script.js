@@ -14,8 +14,8 @@ const usernameLabel = document.getElementById('username-label');
 const logoutButton = document.getElementById('logout-button');
 const settingsButton = document.getElementById('settings-button');
 const settingsBackButton = document.getElementById('settings-back-button');
-const themeToggle = document.getElementById('theme-toggle');
-const languageSelect = document.getElementById('language-select');
+let themeToggle = null;
+let languageSelect = null;
 
 const translations = {
   en: {
@@ -176,13 +176,6 @@ function applyTheme(theme) {
   localStorage.setItem('theme', theme);
 }
 
-if (themeToggle) {
-  themeToggle.addEventListener('click', () => {
-    const currentTheme = document.body.classList.contains('light-mode') ? 'light' : 'dark';
-    applyTheme(currentTheme === 'light' ? 'dark' : 'light');
-  });
-}
-
 // Language selector
 function applyLanguage(lang) {
   const locale = translations[lang] ? lang : 'en';
@@ -212,12 +205,6 @@ function applyLanguage(lang) {
   localStorage.setItem('language', locale);
 }
 
-if (languageSelect) {
-  languageSelect.addEventListener('change', (event) => {
-    applyLanguage(event.target.value);
-  });
-}
-
 // Navigation Controls
 if (settingsButton) {
   settingsButton.addEventListener('click', () => {
@@ -235,6 +222,22 @@ if (settingsBackButton) {
 
 // Check if already logged in on page load
 window.addEventListener('DOMContentLoaded', () => {
+  themeToggle = document.getElementById('theme-toggle');
+  languageSelect = document.getElementById('language-select');
+
+  if (themeToggle) {
+    themeToggle.addEventListener('click', () => {
+      const currentTheme = document.body.classList.contains('light-mode') ? 'light' : 'dark';
+      applyTheme(currentTheme === 'light' ? 'dark' : 'light');
+    });
+  }
+
+  if (languageSelect) {
+    languageSelect.addEventListener('change', (event) => {
+      applyLanguage(event.target.value);
+    });
+  }
+
   const savedTheme = localStorage.getItem('theme') || 'dark';
   const savedLanguage = localStorage.getItem('language') || 'en';
 
