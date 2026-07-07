@@ -3,3 +3,5 @@ server/node_modules/
 server/data/sensors.db
 .env
 .DS_Store
+.vercel
+.env*
