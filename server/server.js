@@ -1,6 +1,17 @@
 const express = require('express');
 const cors = require('cors');
 const jwt = require('jsonwebtoken');
+const bcrypt = require('bcryptjs');
+let supabaseAdmin = null;
+if (process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY) {
+  try {
+    const { createClient } = require('@supabase/supabase-js');
+    supabaseAdmin = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
+    console.log('Supabase admin client initialized');
+  } catch (e) {
+    console.warn('Failed to initialize Supabase client:', e.message);
+  }
+}
 const path = require('path');
 
 const app = express();
@@ -74,4 +85,61 @@ io.on('connection', (socket) => {
 // Start Server
 http.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
+});
+
+// Create new user (requires DB available)
+app.post('/users', async (req, res) => {
+  try {
+    const { username, email, password, role } = req.body;
+
+    // If Supabase admin client is available, use it (recommended for Vercel + Supabase deployments)
+    if (supabaseAdmin) {
+      if (!email || !password) {
+        return res.status(400).json({ error: 'Email and password are required when using Supabase' });
+      }
+
+      const createOpts = {
+        email,
+        password,
+        user_metadata: { username: username || null, role: role || 'user' }
+      };
+
+      const { data, error } = await supabaseAdmin.auth.admin.createUser(createOpts).catch((e) => ({ error: e }));
+
+      if (error) {
+        const msg = error.message || JSON.stringify(error);
+        return res.status(500).json({ error: msg });
+      }
+
+      return res.status(201).json({ id: data?.user?.id || null, email, username: username || null, role: role || 'user' });
+    }
+
+    // Fallback to local SQLite DB when available
+    if (!db) {
+      return res.status(501).json({ error: 'Database not available on this platform' });
+    }
+
+    if (!username || !password) {
+      return res.status(400).json({ error: 'Username and password are required' });
+    }
+
+    const hashed = bcrypt.hashSync(password, 10);
+
+    db.run(
+      'INSERT INTO users (username, password, role) VALUES (?, ?, ?)',
+      [username, hashed, role || 'user'],
+      function (err) {
+        if (err) {
+          if (err.message && err.message.includes('UNIQUE')) {
+            return res.status(409).json({ error: 'User already exists' });
+          }
+          return res.status(500).json({ error: err.message });
+        }
+
+        return res.status(201).json({ id: this.lastID, username, role: role || 'user' });
+      }
+    );
+  } catch (err) {
+    return res.status(500).json({ error: 'Internal Server Error: ' + err.message });
+  }
 });

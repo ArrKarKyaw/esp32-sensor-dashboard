@@ -248,3 +248,61 @@ window.addEventListener('DOMContentLoaded', () => {
     showDashboard();
   }
 });
+
+// Create User form handling (Admin settings)
+const createUserForm = document.getElementById('create-user-form');
+const settingsError = document.getElementById('settings-error');
+if (createUserForm) {
+  createUserForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (settingsError) {
+      settingsError.classList.add('hidden');
+      settingsError.textContent = '';
+    }
+
+    const username = document.getElementById('new-username').value.trim();
+    const email = document.getElementById('new-email')?.value.trim();
+    const password = document.getElementById('new-password').value;
+    const role = document.getElementById('new-role').value;
+
+    if (!username || !password) {
+      if (settingsError) {
+        settingsError.textContent = 'Username and password are required.';
+        settingsError.classList.remove('hidden');
+      }
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${API_URL}/users`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify({ username, email, password, role })
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to create user');
+      }
+
+      // On success, clear fields and show a small success message
+      createUserForm.reset();
+      if (settingsError) {
+        settingsError.textContent = `Created user ${data.username} (id ${data.id})`;
+        settingsError.classList.remove('hidden');
+        setTimeout(() => settingsError.classList.add('hidden'), 3000);
+      }
+    } catch (err) {
+      console.error('Create user error:', err.message);
+      if (settingsError) {
+        settingsError.textContent = err.message;
+        settingsError.classList.remove('hidden');
+      }
+    }
+  });
+}

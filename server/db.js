@@ -3,12 +3,28 @@ const sqlite3 = require('sqlite3').verbose();
 const bcrypt = require('bcryptjs');
 
 const dbPath = path.resolve(__dirname, 'data', 'sensors.db');
-const db = new sqlite3.Database(dbPath, (err) => {
-  if (err) {
-    console.error('Failed to open SQLite database:', err.message);
-    process.exit(1);
+const fs = require('fs');
+try {
+  const dataDir = path.resolve(__dirname, 'data');
+  if (!fs.existsSync(dataDir)) {
+    fs.mkdirSync(dataDir, { recursive: true });
   }
-});
+} catch (mkdirErr) {
+  console.warn('Could not ensure data directory exists:', mkdirErr.message);
+}
+
+let db = null;
+try {
+  db = new sqlite3.Database(dbPath, (err) => {
+    if (err) {
+      console.error('Failed to open SQLite database:', err.message);
+      db = null;
+    }
+  });
+} catch (e) {
+  console.error('SQLite initialization error:', e.message);
+  db = null;
+}
 
 const createTables = () => {
   db.serialize(() => {

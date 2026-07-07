@@ -123,6 +123,10 @@
             <p id="settings-info" class="info-text">Create accounts and manage roles for admin, manager, and user access.</p>
             <form id="create-user-form">
               <label>
+                Email (optional for local DB, required for Supabase)
+                <input name="email" id="new-email" type="email" />
+              </label>
+              <label>
                 Username
                 <input name="username" id="new-username" type="text" required />
               </label>
