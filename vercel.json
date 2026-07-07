@@ -6,6 +6,10 @@
       "destination": "/server/server.js"
     },
     {
+      "source": "/users",
+      "destination": "/server/server.js"
+    },
+    {
       "source": "/socket.io/(.*)",
       "destination": "/server/server.js"
     },

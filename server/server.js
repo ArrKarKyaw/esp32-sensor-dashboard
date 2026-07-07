@@ -2,6 +2,8 @@ const express = require('express');
 const cors = require('cors');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
+const path = require('path');
+
 let supabaseAdmin = null;
 if (process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY) {
   try {
@@ -12,12 +14,11 @@ if (process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY) {
     console.warn('Failed to initialize Supabase client:', e.message);
   }
 }
-const path = require('path');
 
 const app = express();
-const http = require('http').createServer(app);
 
-// 🚀 Vercel (Serverless) မှာ socket.io ကို ပုံမှန်အတိုင်း configuration လုပ်ပေးခြင်း
+// 🚀 Vercel (Serverless) လမ်းကြောင်းတည့်အောင် HTTP Server ဆောက်ပြီး Export လုပ်ပေးရပါမယ်
+const http = require('http').createServer(app);
 const io = require('socket.io')(http, {
   cors: {
     origin: "*",
@@ -26,16 +27,14 @@ const io = require('socket.io')(http, {
 });
 
 const PORT = process.env.PORT || 3000;
-const JWT_SECRET = process.env.JWT_SECRET || 'fallback_elevator_secret_key_123';
 
 app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '../client')));
 
-// 🚀 Vercel 500 Error အမြစ်ပြတ်စေရန် SQLite ကို အွန်လိုင်းပေါ်မှာ လုံးဝ ခေါ်မသုံးတော့ဘဲ ကျော်ခိုင်းခြင်း
+// 🚀 SQLite Fallback စစ်ဆေးခြင်း
 let db;
 try {
-  // Local စက်ထဲမှာပဲ SQLite သုံးပြီး Vercel ပေါ်ရောက်ရင် crash မဖြစ်အောင် တားဆီးခြင်း
   if (process.env.VERCEL !== '1') {
     const { db: localDb } = require('./db');
     db = localDb;
@@ -44,7 +43,7 @@ try {
   console.log("Database features disabled on serverless platform.");
 }
 
-// 🔓 LOGIN ROUTE (ဒေတာဘေ့စ်မလိုဘဲ တန်းပွင့်မည့်စနစ်)
+// 🔓 LOGIN ROUTE (Vercel ပေါ်မှာ တိုက်ရိုက်အလုပ်လုပ်မည့် POST စနစ်)
 app.post('/login', (req, res) => {
   const { username, password } = req.body;
   
@@ -71,25 +70,11 @@ app.post('/login', (req, res) => {
   return res.status(401).json({ error: 'Invalid username or password' });
 });
 
-// Socket.io Connection Dummy Handler for Vercel
-io.on('connection', (socket) => {
-  console.log('A user connected');
-  socket.on('disconnect', () => {
-    console.log('User disconnected');
-  });
-});
-
-// Start Server
-http.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
-
-// Create new user (requires DB available)
+// Create new user
 app.post('/users', async (req, res) => {
   try {
     const { username, email, password, role } = req.body;
 
-    // If Supabase admin client is available, use it (recommended for Vercel + Supabase deployments)
     if (supabaseAdmin) {
       if (!email || !password) {
         return res.status(400).json({ error: 'Email and password are required when using Supabase' });
@@ -104,14 +89,12 @@ app.post('/users', async (req, res) => {
       const { data, error } = await supabaseAdmin.auth.admin.createUser(createOpts).catch((e) => ({ error: e }));
 
       if (error) {
-        const msg = error.message || JSON.stringify(error);
-        return res.status(500).json({ error: msg });
+        return res.status(500).json({ error: error.message || JSON.stringify(error) });
       }
 
       return res.status(201).json({ id: data?.user?.id || null, email, username: username || null, role: role || 'user' });
     }
 
-    // Fallback to local SQLite DB when available
     if (!db) {
       return res.status(501).json({ error: 'Database not available on this platform' });
     }
@@ -132,7 +115,6 @@ app.post('/users', async (req, res) => {
           }
           return res.status(500).json({ error: err.message });
         }
-
         return res.status(201).json({ id: this.lastID, username, role: role || 'user' });
       }
     );
@@ -140,3 +122,20 @@ app.post('/users', async (req, res) => {
     return res.status(500).json({ error: 'Internal Server Error: ' + err.message });
   }
 });
+
+io.on('connection', (socket) => {
+  console.log('A user connected');
+  socket.on('disconnect', () => {
+    console.log('User disconnected');
+  });
+});
+
+// ⚡ Local စက်ထဲမှာ Run ရင် အလုပ်လုပ်ပြီး Vercel ပေါ်မှာဆိုရင် လမ်းကြောင်းမပိတ်အောင် ခွဲထုတ်ခြင်း
+if (process.env.VERCEL !== '1') {
+  http.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+  });
+}
+
+// 🎯 Vercel Cloud စနစ်က လှမ်းခေါ်လို့ရအောင် app (Express) ကို အဓိက Export ထုတ်ပေးရပါမယ်
+module.exports = app;
