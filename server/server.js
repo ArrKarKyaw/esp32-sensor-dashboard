@@ -68,32 +68,34 @@ function buildQueryWithDate(baseSql, params, start, end) {
   return sql;
 }
 
-app.post('/login', async (req, res) => {
-  const { username, password } = req.body; // username နေရာမှာ email ရိုက်ထည့်မှာဖြစ်ပါတယ်
+app.post('/login', (req, res) => {
+  const { username, password } = req.body;
   if (!username || !password) {
-    return res.status(400).json({ error: 'Email and password are required' });
+    return res.status(400).json({ error: 'Username and password are required' });
   }
 
-  try {
-    // 🚀 Supabase Auth စနစ်ဖြင့် Email နှင့် Password ကို လှမ်းစစ်ခြင်း
-    const { data, error } = await db.auth.signInWithPassword({
-      email: username,
-      password: password,
+  // 🚀 အွန်လိုင်းရော Local ပါ သေချာပေါက် အလုပ်လုပ်မည့် Hardcode စစ်ဆေးချက်
+  if (username === 'admin' && password === 'admin123') {
+    const token = jwt.sign({ sub: 1, username: 'admin', role: 'admin' }, JWT_SECRET, {
+      expiresIn: '12h'
     });
+    return res.json({ id: 1, token, username: 'admin', role: 'admin' });
+  }
 
-    if (error || !data.user) {
+  // အပေါ်ကမဟုပ်ရင် မူရင်း Database ထဲမှာ ဆက်ရှာမယ်
+  db.get('SELECT * FROM users WHERE username = ?', [username], (err, user) => {
+    if (err) {
+      return res.status(500).json({ error: 'Login failed' });
+    }
+    if (!user || !bcrypt.compareSync(password, user.password)) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
-    // Login အောင်မြင်ရင် Token ထုတ်ပေးခြင်း
-    const token = jwt.sign({ sub: data.user.id, username: data.user.email, role: 'admin' }, JWT_SECRET, {
+    const token = jwt.sign({ sub: user.id, username: user.username, role: user.role }, JWT_SECRET, {
       expiresIn: '12h'
     });
-
-    res.json({ id: data.user.id, token, username: data.user.email, role: 'admin' });
-  } catch (err) {
-    res.status(500).json({ error: 'Login failed' });
-  }
+    res.json({ id: user.id, token, username: user.username, role: user.role });
+  });
 });
 
 app.get('/users', authenticateToken, authorizeRole(['admin']), (req, res) => {
