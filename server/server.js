@@ -70,32 +70,29 @@ function buildQueryWithDate(baseSql, params, start, end) {
 
 app.post('/login', (req, res) => {
   const { username, password } = req.body;
+  
   if (!username || !password) {
     return res.status(400).json({ error: 'Username and password are required' });
   }
 
-  // 🚀 အွန်လိုင်းရော Local ပါ သေချာပေါက် အလုပ်လုပ်မည့် Hardcode စစ်ဆေးချက်
+  // 🚀 Vercel ပေါ်မှာ ဒေတာဘေ့စ်မလိုဘဲ တန်းဝင်နိုင်အောင် သီးသန့် bypass လုပ်ပေးခြင်း
   if (username === 'admin' && password === 'admin123') {
-    const token = jwt.sign({ sub: 1, username: 'admin', role: 'admin' }, JWT_SECRET, {
-      expiresIn: '12h'
+    const token = jwt.sign(
+      { sub: 1, username: 'admin', role: 'admin' }, 
+      JWT_SECRET || 'your_jwt_secret_key', 
+      { expiresIn: '12h' }
+    );
+    
+    return res.json({ 
+      id: 1, 
+      token, 
+      username: 'admin', 
+      role: 'admin' 
     });
-    return res.json({ id: 1, token, username: 'admin', role: 'admin' });
   }
 
-  // အပေါ်ကမဟုပ်ရင် မူရင်း Database ထဲမှာ ဆက်ရှာမယ်
-  db.get('SELECT * FROM users WHERE username = ?', [username], (err, user) => {
-    if (err) {
-      return res.status(500).json({ error: 'Login failed' });
-    }
-    if (!user || !bcrypt.compareSync(password, user.password)) {
-      return res.status(401).json({ error: 'Invalid credentials' });
-    }
-
-    const token = jwt.sign({ sub: user.id, username: user.username, role: user.role }, JWT_SECRET, {
-      expiresIn: '12h'
-    });
-    res.json({ id: user.id, token, username: user.username, role: user.role });
-  });
+  // အကယ်၍ အကောင့်မှားရင် ပြမည့် Error
+  return res.status(401).json({ error: 'Invalid username or password' });
 });
 
 app.get('/users', authenticateToken, authorizeRole(['admin']), (req, res) => {
