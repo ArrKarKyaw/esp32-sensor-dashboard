@@ -1,7 +1,17 @@
 // 🚀 Auto-detect API Base URL (Localရော Vercelပါ အလိုအလျောက်သိစေရန်)
 const API_URL = window.location.origin;
 
-const socket = io(API_URL);
+// ⚡ Vercel ပေါ်မှာ Socket Error 500 မပြတ်တက်အောင် configuration ညှိခြင်း
+const socket = io(API_URL, {
+  transports: ['websocket', 'polling'], // Polling စနစ်ကို အရန်အနေနဲ့ သုံးခိုင်းခြင်း
+  reconnectionAttempts: 3,             // ချိတ်မရရင် ၃ ကြိမ်ပဲ စမ်းခိုင်းပြီး Server မလေးအောင် တားခြင်း
+  timeout: 5000
+});
+
+// Socket connection error ကို ဖမ်းပြီး console မှာ ပေါက်ကွဲမနေအောင် တားဆီးခြင်း
+socket.on('connect_error', (err) => {
+  console.log('Socket connection temporarily unavailable on Serverless Cloud.');
+});
 
 // DOM Elements
 const loginView = document.getElementById('login-view');
@@ -107,11 +117,19 @@ if (loginForm) {
         body: JSON.stringify({ username, password })
       });
 
-      const data = await response.json();
-
+      // 🛡️ JSON input error မဖြစ်အောင် ရောက်လာတဲ့ Response status ကို အရင်ဆုံး စစ်ဆေးခြင်း
       if (!response.ok) {
-        throw new Error(data.error || 'Login failed');
+        let errorMsg = 'Login failed';
+        try {
+          const errData = await response.json();
+          errorMsg = errData.error || errorMsg;
+        } catch(e) {
+          errorMsg = `Server Error (${response.status}). Please check Vercel routing configuration.`;
+        }
+        throw new Error(errorMsg);
       }
+
+      const data = await response.json();
 
       // Save Token and Session info
       localStorage.setItem('token', data.token);
@@ -284,11 +302,16 @@ if (createUserForm) {
         body: JSON.stringify({ username, email, password, role })
       });
 
-      const data = await res.json();
-
       if (!res.ok) {
-        throw new Error(data.error || 'Failed to create user');
+        let errorMsg = 'Failed to create user';
+        try {
+          const errData = await res.json();
+          errorMsg = errData.error || errorMsg;
+        } catch(e) {}
+        throw new Error(errorMsg);
       }
+
+      const data = await res.json();
 
       // On success, clear fields and show a small success message
       createUserForm.reset();
