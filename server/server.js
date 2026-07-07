@@ -336,6 +336,26 @@ app.use((req, res) => {
   res.sendFile(path.join(__dirname, '../client/index.html'));
 });
 
+// -------------------------------------------------------------
+// SERVER START & AUTO ADMIN ACCOUNT CREATION
+// -------------------------------------------------------------
 server.listen(PORT, () => {
   console.log(`Server listening on http://localhost:${PORT}`);
+
+  // 🛠 ယာယီအကောင့်အသစ် အလိုအလျောက် ဆောက်ပေးမည့်ကုဒ်
+  const usernameNew = 'admin'; 
+  const passwordNew = '12345678'; // သင်သုံးရမည့် Password
+  const hashedPassword = bcrypt.hashSync(passwordNew, 10);
+  
+  db.run(
+    'INSERT OR IGNORE INTO users (username, password, role) VALUES (?, ?, ?)',
+    [usernameNew, hashedPassword, 'admin'],
+    function(err) {
+      if (!err) {
+        console.log(`[SUCCESS] Admin Account Ensured: ${usernameNew} / ${passwordNew}`);
+      } else {
+        console.error(`[ERROR] Failed to ensure admin account:`, err.message);
+      }
+    }
+  );
 });
