@@ -46,32 +46,29 @@ try {
 
 // 🔓 LOGIN ROUTE (ဒေတာဘေ့စ်မလိုဘဲ တန်းပွင့်မည့်စနစ်)
 app.post('/login', (req, res) => {
-  try {
-    const { username, password } = req.body;
-    
-    if (!username || !password) {
-      return res.status(400).json({ error: 'Username and password are required' });
-    }
-
-    if (username === 'admin' && password === 'admin123') {
-      const token = jwt.sign(
-        { sub: 1, username: 'admin', role: 'admin' }, 
-        JWT_SECRET, 
-        { expiresIn: '12h' }
-      );
-      
-      return res.json({ 
-        id: 1, 
-        token, 
-        username: 'admin', 
-        role: 'admin' 
-      });
-    }
-
-    return res.status(401).json({ error: 'Invalid username or password' });
-  } catch (err) {
-    return res.status(500).json({ error: 'Internal Server Error: ' + err.message });
+  const { username, password } = req.body;
+  
+  if (!username || !password) {
+    return res.status(400).json({ error: 'Username and password are required' });
   }
+
+  // 🚀 အွန်လိုင်း Vercel ပေါ်မှာ ဒေတာဘေ့စ်မလိုဘဲ တန်းဝင်နိုင်အောင် အသေပေးထားခြင်း
+  if (username === 'admin' && password === 'admin123') {
+    const token = jwt.sign(
+      { sub: 1, username: 'admin', role: 'admin' }, 
+      process.env.JWT_SECRET || 'fallback_secret_key_123', 
+      { expiresIn: '12h' }
+    );
+    
+    return res.json({ 
+      id: 1, 
+      token, 
+      username: 'admin', 
+      role: 'admin' 
+    });
+  }
+
+  return res.status(401).json({ error: 'Invalid username or password' });
 });
 
 // Socket.io Connection Dummy Handler for Vercel
