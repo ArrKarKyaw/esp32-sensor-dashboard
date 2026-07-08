@@ -102,7 +102,8 @@ if (loginForm) {
     const password = document.getElementById('password').value;
 
     try {
-      const response = await fetch('/login', {
+      // 🚀 Vercel Rewrite Rules နှင့် ကိုက်ညီစေရန် /api/login သို့ ပြောင်းလဲလိုက်ပါပြီ
+      const response = await fetch('/api/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password })
@@ -284,7 +285,8 @@ if (createUserForm) {
 
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch('/users', {
+      // 🚀 Vercel Rewrite Rules နှင့် ကိုက်ညီစေရန် /api/users သို့ ပြောင်းလဲလိုက်ပါပြီ
+      const res = await fetch('/api/users', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

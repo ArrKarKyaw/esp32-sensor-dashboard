@@ -1,18 +1,8 @@
 {
   "version": 2,
-  "functions": {
-    "api/server.js": {
-      "memory": 1024,
-      "maxDuration": 10
-    }
-  },
   "rewrites": [
     {
-      "source": "/login",
-      "destination": "/api/server.js"
-    },
-    {
-      "source": "/users",
+      "source": "/api/(.*)",
       "destination": "/api/server.js"
     },
     {
