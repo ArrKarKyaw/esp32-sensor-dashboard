@@ -14,6 +14,7 @@ const settingsButton = document.getElementById('settings-button');
 const settingsBackButton = document.getElementById('settings-back-button');
 let themeToggle = null;
 let languageSelect = null;
+let historyChart = null; // Chart.js Object ကို ထိန်းရန်
 
 const translations = {
   en: {
@@ -54,7 +55,7 @@ const translations = {
     exportJson: 'JSON ဒေါင်းလုဒ်',
     chartHeading: 'ဆင်ဆာမှတ်တမ်း',
     settingsHeading: 'အက်ဒ်မင် ဆက်တင်',
-    settingsInfo: 'အကောင့်များ ဖန်တီးပြီး အခန်းကဏ္ဍများကို စီမံပါ',
+    settingsInfo: 'အကောင့်များ ဖันတီးပြီး အခန်းကဏ္ဍများကို စီမံပါ',
     lightButton: 'အလင်း',
     darkButton: 'အမှောင်'
   },
@@ -102,7 +103,6 @@ if (loginForm) {
     const password = document.getElementById('password').value;
 
     try {
-      // 🚀 Vercel Rewrite Rules နှင့် ကိုက်ညီစေရန် /api/login သို့ ပြောင်းလဲလိုက်ပါပြီ
       const response = await fetch('/api/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -157,6 +157,9 @@ function showDashboard() {
       settingsButton.classList.add('hidden');
     }
   }
+
+  // Dashboard ပွင့်လာလျှင် ဆင်ဆာဒေတာများကို ချက်ချင်းဆွဲထုတ်မည်
+  updateDashboardData();
 }
 
 // Log out Action
@@ -231,34 +234,6 @@ if (settingsBackButton) {
   });
 }
 
-window.addEventListener('DOMContentLoaded', () => {
-  themeToggle = document.getElementById('theme-toggle');
-  languageSelect = document.getElementById('language-select');
-
-  if (themeToggle) {
-    themeToggle.addEventListener('click', () => {
-      const currentTheme = document.body.classList.contains('light-mode') ? 'light' : 'dark';
-      applyTheme(currentTheme === 'light' ? 'dark' : 'light');
-    });
-  }
-
-  if (languageSelect) {
-    languageSelect.addEventListener('change', (event) => {
-      applyLanguage(event.target.value);
-    });
-  }
-
-  const savedTheme = localStorage.getItem('theme') || 'dark';
-  const savedLanguage = localStorage.getItem('language') || 'en';
-
-  applyTheme(savedTheme);
-  applyLanguage(savedLanguage);
-
-  if (localStorage.getItem('token')) {
-    showDashboard();
-  }
-});
-
 // Create User form handling (Admin settings)
 const createUserForm = document.getElementById('create-user-form');
 const settingsError = document.getElementById('settings-error');
@@ -285,7 +260,6 @@ if (createUserForm) {
 
     try {
       const token = localStorage.getItem('token');
-      // 🚀 Vercel Rewrite Rules နှင့် ကိုက်ညီစေရန် /api/users သို့ ပြောင်းလဲလိုက်ပါပြီ
       const res = await fetch('/api/users', {
         method: 'POST',
         headers: {
@@ -321,3 +295,127 @@ if (createUserForm) {
     }
   });
 }
+
+// ==========================================
+// 🚀 REAL-TIME SENSOR DATA FETCH & CHART (UPDATED)
+// ==========================================
+async function updateDashboardData() {
+  if (dashboardView && dashboardView.classList.contains('hidden')) return;
+
+  try {
+    const response = await fetch('/api/get-sensor');
+    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+    
+    const data = await response.json();
+
+    if (data && data.length > 0) {
+      // ၁။ HTML Cards များကို သင့် index.html ID အတိုင်း ကွက်တိတန်ဖိုးသွင်းခြင်း
+      const latestData = data[0]; 
+      
+      const tempEl = document.getElementById('temperature-value');
+      const humidEl = document.getElementById('humidity-value');
+      const pressEl = document.getElementById('pressure-value');
+      const otherEl = document.getElementById('other-value');
+
+      if (tempEl) tempEl.innerText = latestData.temperature ? latestData.temperature.toFixed(1) + " °C" : "-- °C";
+      if (humidEl) humidEl.innerText = latestData.humidity ? latestData.humidity.toFixed(1) + " %" : "-- %";
+      if (pressEl) pressEl.innerText = latestData.pressure ? latestData.pressure.toFixed(1) + " hPa" : "-- hPa";
+      if (otherEl) otherEl.innerText = latestData.other || "No note data";
+
+      // ၂။ Chart.js ကို ဒေတာမှတ်တမ်းအဟောင်း ၂၀ ဖြင့် Real-time ဆွဲပေးခြင်း
+      updateHistoryChart(data);
+
+      console.log("Real-time Dashboard Updated:", latestData);
+    }
+  } catch (error) {
+    console.error("Error fetching sensor data:", error);
+  }
+}
+
+// Chart update လုပ်ရန် Function
+function updateHistoryChart(sensorLogs) {
+  const ctx = document.getElementById('history-chart');
+  if (!ctx) return;
+
+  // Chart ဆွဲရန်အတွက် ခေါ်ယူထားသော data (၂၀ ခု) ကို အချိန်စဉ်အတိုင်း ရှေ့နောက်ပြန်စီပေးရပါမည်
+  const reversedLogs = [...sensorLogs].reverse();
+  
+  const labels = reversedLogs.map(log => new Date(log.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
+  const tempDataset = reversedLogs.map(log => log.temperature);
+  const humidDataset = reversedLogs.map(log => log.humidity);
+
+  if (historyChart) {
+    // Chart ရှိပြီးသားဆိုလျှင် ဒေတာအသစ်လဲပြီး Update လုပ်ရုံပါပဲ
+    historyChart.data.labels = labels;
+    historyChart.data.datasets[0].data = tempDataset;
+    historyChart.data.datasets[1].data = humidDataset;
+    historyChart.update('none'); // animation ခဏပိတ်ပြီး သွက်သွက်မြန်မြန် update လုပ်ရန်
+  } else {
+    // Chart လုံးဝမရှိသေးလျှင် အသစ်တစ်ခု စဆောက်ပါမည်
+    historyChart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: labels,
+        datasets: [
+          {
+            label: 'Temperature (°C)',
+            data: tempDataset,
+            borderColor: '#ff6384',
+            backgroundColor: 'rgba(255, 99, 132, 0.1)',
+            borderWidth: 2,
+            tension: 0.3,
+            yAxisID: 'y'
+          },
+          {
+            label: 'Humidity (%)',
+            data: humidDataset,
+            borderColor: '#36a2eb',
+            backgroundColor: 'rgba(54, 162, 235, 0.1)',
+            borderWidth: 2,
+            tension: 0.3,
+            yAxisID: 'y1'
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        scales: {
+          y: { type: 'linear', display: true, position: 'left', title: { display: true, text: 'Temp (°C)' } },
+          y1: { type: 'linear', display: true, position: 'right', grid: { drawOnChartArea: false }, title: { display: true, text: 'Humid (%)' } }
+        }
+      }
+    });
+  }
+}
+
+// DOMContentLoaded Event Handling
+window.addEventListener('DOMContentLoaded', () => {
+  themeToggle = document.getElementById('theme-toggle');
+  languageSelect = document.getElementById('language-select');
+
+  if (themeToggle) {
+    themeToggle.addEventListener('click', () => {
+      const currentTheme = document.body.classList.contains('light-mode') ? 'light' : 'dark';
+      applyTheme(currentTheme === 'light' ? 'dark' : 'light');
+    });
+  }
+
+  if (languageSelect) {
+    languageSelect.addEventListener('change', (event) => {
+      applyLanguage(event.target.value);
+    });
+  }
+
+  const savedTheme = localStorage.getItem('theme') || 'dark';
+  const savedLanguage = localStorage.getItem('language') || 'en';
+
+  applyTheme(savedTheme);
+  applyLanguage(savedLanguage);
+
+  if (localStorage.getItem('token')) {
+    showDashboard();
+  }
+
+  // ၅ စက္ကန့်တစ်ခါ Backend မှ ဒေတာအသစ်ကို ပုံမှန် လှမ်းဆွဲပေးမည့် Timer
+  setInterval(updateDashboardData, 5000);
+});
