@@ -57,14 +57,14 @@ const translations = {
     darkButton: 'มืด'
   },
   my: {
-    appTitle: 'ဘယ်လ်လီဗေတာ အချက်အလက် ဒ႑ာရီ',
+    appTitle: 'ဓာတ်လှေကား အချက်အလက် Dashboard',
     loginTitle: 'အကောင့်ဝင်ပါ',
     loginInfo: 'သင့်အချက်အလက်များကို ထည့်ပါ',
     filterHeading: 'မှတ်တမ်း စစ်ထုတ်',
     applyButton: 'အသုံးပြုမည်',
     exportCsv: 'CSV ဒေါင်းလုဒ်',
     exportJson: 'JSON ဒေါင်းလုဒ်',
-    chartHeading: 'စင်ဆာမှတ်တမ်း',
+    chartHeading: 'ဆင်ဆာမှတ်တမ်း',
     settingsHeading: 'အက်ဒ်မင် ဆက်တင်',
     settingsInfo: 'အကောင့်များ ဖန်တီးပြီး အခန်းကဏ္ဍများကို စီမံပါ',
     lightButton: 'အလင်း',
@@ -111,13 +111,13 @@ if (loginForm) {
     const password = document.getElementById('password').value;
 
     try {
-      const response = await fetch(`${API_URL}/login`, {
+      // 🚀 Vercel Deployment အတွက် Relative Path ပြောင်းလဲခြင်း
+      const response = await fetch('/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password })
       });
 
-      // 🛡️ JSON input error မဖြစ်အောင် ရောက်လာတဲ့ Response status ကို အရင်ဆုံး စစ်ဆေးခြင်း
       if (!response.ok) {
         let errorMsg = 'Login failed';
         try {
@@ -131,12 +131,10 @@ if (loginForm) {
 
       const data = await response.json();
 
-      // Save Token and Session info
       localStorage.setItem('token', data.token);
       localStorage.setItem('username', data.username);
       localStorage.setItem('role', data.role);
 
-      // UI Changes on Success
       showDashboard();
     } catch (err) {
       console.error('Login Error:', err.message);
@@ -238,7 +236,6 @@ if (settingsBackButton) {
   });
 }
 
-// Check if already logged in on page load
 window.addEventListener('DOMContentLoaded', () => {
   themeToggle = document.getElementById('theme-toggle');
   languageSelect = document.getElementById('language-select');
@@ -293,7 +290,8 @@ if (createUserForm) {
 
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`${API_URL}/users`, {
+      // 🚀 `${API_URL}/users` ကို ဖြုတ်ပြီး Relative Path '/users' သို့ ပြောင်းလဲလိုက်ပါပြီ
+      const res = await fetch('/users', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -313,7 +311,6 @@ if (createUserForm) {
 
       const data = await res.json();
 
-      // On success, clear fields and show a small success message
       createUserForm.reset();
       if (settingsError) {
         settingsError.textContent = `Created user ${data.username} (id ${data.id})`;
