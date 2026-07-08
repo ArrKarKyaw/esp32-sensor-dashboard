@@ -2,11 +2,11 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
-const bcrypt = require('bcrypt');
+const bcrypt = require('bcryptjs'); // 🔥 bcrypt နေရာမှာ bcryptjs သို့ ပြောင်းလိုက်ပါပြီ
 const jwt = require('jsonwebtoken');
 const { createClient } = require('@supabase/supabase-js');
 
-// ၂။ Express App Initialize လုပ်ခြင်း (ဒီလိုင်းက အပေါ်ဆုံးမှာ ရှိနေရပါမယ်)
+// ၂။ Express App Initialize လုပ်ခြင်း
 const app = express();
 
 // Middleware များ သတ်မှတ်ခြင်း
@@ -33,7 +33,7 @@ app.post('/login', async (req, res) => {
     const { username, password } = req.body;
 
     if (!supabaseAdmin) {
-      return res.status(500).json({ error: 'Database connection connection entry is not configured.' });
+      return res.status(500).json({ error: 'Database connection is not configured.' });
     }
 
     // Supabase 'users' Table ထဲမှာ user ကို ရှာခြင်း
@@ -47,7 +47,7 @@ app.post('/login', async (req, res) => {
       return res.status(401).json({ error: 'Invalid username or password' });
     }
 
-    // Password ကို Bcrypt ဖြင့် စစ်ဆေးခြင်း
+    // Password ကို Bcryptjs ဖြင့် စစ်ဆေးခြင်း
     const match = bcrypt.compareSync(password, user.password);
     if (!match) {
       return res.status(401).json({ error: 'Invalid username or password' });
@@ -86,7 +86,7 @@ app.post('/users', async (req, res) => {
         .select();
 
       if (error) {
-        if (error.code === '23505') { // Postgres UNIQUE Constraint Error
+        if (error.code === '23505') { 
           return res.status(409).json({ error: 'User already exists' });
         }
         return res.status(500).json({ error: error.message });
@@ -105,5 +105,5 @@ app.post('/users', async (req, res) => {
   }
 });
 
-// Vercel Serverless Function အဖြစ် သုံးနိုင်ရန် Module Export လုပ်ခြင်း
+// Vercel Serverless Function အဖြစ် သုံးနိုင်ရန် Export လုပ်ခြင်း
 module.exports = app;
