@@ -1,19 +1,6 @@
 {
   "version": 2,
-  "functions": {
-    "api/server.js": {
-      "memory": 1024,
-      "maxDuration": 10
-    }
-  },
   "rewrites": [
-    {
-      "source": "/api/(.*)",
-      "destination": "/api/server.js"
-    },
-    {
-      "source": "/(.*)",
-      "destination": "/client/$1"
-    }
+    { "source": "/(.*)", "destination": "/client/$1" }
   ]
 }
