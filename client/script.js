@@ -1,17 +1,5 @@
-// 🚀 Auto-detect API Base URL (Localရော Vercelပါ အလိုအလျောက်သိစေရန်)
+// 🚀 Auto-detect API Base URL
 const API_URL = window.location.origin;
-
-// ⚡ Vercel ပေါ်မှာ Socket Error 500 မပြတ်တက်အောင် configuration ညှိခြင်း
-const socket = io(API_URL, {
-  transports: ['websocket', 'polling'], // Polling စနစ်ကို အရန်အနေနဲ့ သုံးခိုင်းခြင်း
-  reconnectionAttempts: 3,             // ချိတ်မရရင် ၃ ကြိမ်ပဲ စမ်းခိုင်းပြီး Server မလေးအောင် တားခြင်း
-  timeout: 5000
-});
-
-// Socket connection error ကို ဖမ်းပြီး console မှာ ပေါက်ကွဲမနေအောင် တားဆီးခြင်း
-socket.on('connect_error', (err) => {
-  console.log('Socket connection temporarily unavailable on Serverless Cloud.');
-});
 
 // DOM Elements
 const loginView = document.getElementById('login-view');
@@ -104,14 +92,16 @@ const translations = {
 if (loginForm) {
   loginForm.addEventListener('submit', async (e) => {
     e.preventDefault();
-    loginError.classList.add('hidden');
-    loginError.textContent = '';
+    
+    if (loginError) {
+      loginError.classList.add('hidden');
+      loginError.textContent = '';
+    }
 
     const username = document.getElementById('username').value.trim();
     const password = document.getElementById('password').value;
 
     try {
-      // 🚀 Vercel Deployment အတွက် Relative Path ပြောင်းလဲခြင်း
       const response = await fetch('/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -124,7 +114,7 @@ if (loginForm) {
           const errData = await response.json();
           errorMsg = errData.error || errorMsg;
         } catch(e) {
-          errorMsg = `Server Error (${response.status}). Please check Vercel routing configuration.`;
+          errorMsg = `Server Error (${response.status}).`;
         }
         throw new Error(errorMsg);
       }
@@ -138,8 +128,10 @@ if (loginForm) {
       showDashboard();
     } catch (err) {
       console.error('Login Error:', err.message);
-      loginError.textContent = err.message;
-      loginError.classList.remove('hidden');
+      if (loginError) {
+        loginError.textContent = err.message;
+        loginError.classList.remove('hidden');
+      }
     }
   });
 }
@@ -151,16 +143,18 @@ function showDashboard() {
 
   if (!token) return;
 
-  loginView.classList.add('hidden');
-  dashboardView.classList.remove('hidden');
-  settingsView.classList.add('hidden');
-  userActions.classList.remove('hidden');
-  usernameLabel.textContent = `Hello, ${username}`;
+  if (loginView) loginView.classList.add('hidden');
+  if (dashboardView) dashboardView.classList.remove('hidden');
+  if (settingsView) settingsView.classList.add('hidden');
+  if (userActions) userActions.classList.remove('hidden');
+  if (usernameLabel) usernameLabel.textContent = `Hello, ${username}`;
 
-  if (role === 'admin') {
-    settingsButton.classList.remove('hidden');
-  } else {
-    settingsButton.classList.add('hidden');
+  if (settingsButton) {
+    if (role === 'admin') {
+      settingsButton.classList.remove('hidden');
+    } else {
+      settingsButton.classList.add('hidden');
+    }
   }
 }
 
@@ -290,7 +284,6 @@ if (createUserForm) {
 
     try {
       const token = localStorage.getItem('token');
-      // 🚀 `${API_URL}/users` ကို ဖြုတ်ပြီး Relative Path '/users' သို့ ပြောင်းလဲလိုက်ပါပြီ
       const res = await fetch('/users', {
         method: 'POST',
         headers: {
