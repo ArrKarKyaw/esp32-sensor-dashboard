@@ -9,11 +9,11 @@
   "rewrites": [
     {
       "source": "/login",
-      "destination": "api/server.js"
+      "destination": "/api/server.js"
     },
     {
       "source": "/users",
-      "destination": "api/server.js"
+      "destination": "/api/server.js"
     },
     {
       "source": "/(.*)",
