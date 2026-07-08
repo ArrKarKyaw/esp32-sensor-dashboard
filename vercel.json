@@ -1,27 +1,23 @@
 {
   "version": 2,
-  "builds": [
-    {
-      "src": "server/server.js",
-      "use": "@vercel/node"
-    },
-    {
-      "src": "client/**",
-      "use": "@vercel/static"
+  "functions": {
+    "api/server.js": {
+      "memory": 1024,
+      "maxDuration": 10
     }
-  ],
+  },
   "rewrites": [
     {
       "source": "/login",
-      "destination": "/server/server.js"
+      "destination": "/api/server.js"
     },
     {
       "source": "/users",
-      "destination": "/server/server.js"
+      "destination": "/api/server.js"
     },
     {
       "source": "/socket.io/(.*)",
-      "destination": "/server/server.js"
+      "destination": "/api/server.js"
     },
     {
       "source": "/(.*)",
