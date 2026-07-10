@@ -158,12 +158,14 @@ function updateDeviceSelectOptions(data) {
   const deviceSelect = document.getElementById('device-select');
   if (!deviceSelect) return;
   const currentSelected = deviceSelect.value;
-  deviceSelect.innerHTML = '<option value="">-- Select Device --</option>';
+  deviceSelect.innerHTML = '<option value="" style="color: #222222; background-color: #ffffff;">-- Select Device --</option>';
   const uniqueDevices = [...new Set(data.map(item => item.device_id).filter(Boolean))];
   uniqueDevices.forEach(devKey => {
     let opt = document.createElement('option');
     opt.value = devKey;
     opt.innerHTML = devKey.toUpperCase();
+    opt.style.color = "#222222";          // Dropdown စာလုံးအရောင် အမည်းပြောင်းခြင်း
+    opt.style.backgroundColor = "#ffffff"; // Dropdown Background အဖြူပြောင်းခြင်း
     deviceSelect.appendChild(opt);
   });
   if (currentSelected) {
@@ -186,6 +188,7 @@ function updateHistoryChart(deviceId, sensorLogs) {
 
   let datasets = [];
 
+  // စက် ID အလိုက် Graph သီးသန့်ခွဲဆွဲခြင်း
   if (deviceId === 'lift-01') {
     datasets = [
       { label: 'Temperature (°C)', data: reversedLogs.map(log => log.temperature || null), borderColor: '#ff6384', borderWidth: 2, tension: 0.2 },
@@ -207,7 +210,7 @@ function updateHistoryChart(deviceId, sensorLogs) {
 }
 
 // ========================================================
-// 📊 ၃။ DATA EXPORT SYSTEM FUNCTIONS (FIXED DATE FILTER)
+// 📊 ၃။ DATA EXPORT SYSTEM FUNCTIONS (FIXED)
 // ========================================================
 function getFilteredExportData() {
   let exportData = [...allSensorData];
@@ -220,14 +223,20 @@ function getFilteredExportData() {
     exportData = exportData.filter(item => item.device_id === selectedDevice);
   }
 
-  // ၂။ Start Date Filter
-  if (startDateStr) {
-    exportData = exportData.filter(item => new Date(item.created_at).getTime() >= new Date(startDateStr).getTime());
+  // ၂။ Start Date Filter (စာသားအလွတ်ဖြစ်နေရင် ကျော်သွားမယ်)
+  if (startDateStr && startDateStr.trim() !== "") {
+    const startTime = new Date(startDateStr).getTime();
+    if (!isNaN(startTime)) {
+      exportData = exportData.filter(item => new Date(item.created_at).getTime() >= startTime);
+    }
   }
 
-  // ၃။ End Date Filter
-  if (endDateStr) {
-    exportData = exportData.filter(item => new Date(item.created_at).getTime() <= new Date(endDateStr).getTime());
+  // ၃။ End Date Filter (စာသားအလွတ်ဖြစ်နေရင် ကျော်သွားမယ်)
+  if (endDateStr && endDateStr.trim() !== "") {
+    const endTime = new Date(endDateStr).getTime();
+    if (!isNaN(endTime)) {
+      exportData = exportData.filter(item => new Date(item.created_at).getTime() <= endTime);
+    }
   }
 
   return { exportData, selectedDevice };
@@ -488,7 +497,14 @@ function resetUIElements() {
 // 🎯 ၆။ Event Bindings & Initialization
 // ========================================================
 window.addEventListener('DOMContentLoaded', () => {
-  // 🎯 Form Refresh ပိတ်ရန်အတွက် e.preventDefault() ကို ဒီနေရာမှာ သေချာထည့်ထားပါတယ်
+  // 🎯 Dropdown Input စာလုံးအရောင် အမည်းရောင် ပုံသေဖြစ်အောင် စတိုင်ထည့်သွင်းခြင်း
+  const deviceSelectEl = document.getElementById('device-select');
+  if (deviceSelectEl) {
+    deviceSelectEl.style.color = "#222222";
+    deviceSelectEl.style.backgroundColor = "#ffffff";
+  }
+
+  // 🎯 Apply နှိပ်ရင် Refresh ဖြစ်တာကို တားဆီးရန် e.preventDefault() သေချာထည့်ထားပါတယ်
   document.getElementById('filter-button')?.addEventListener('click', (e) => {
     e.preventDefault(); 
     applyFiltersAndRender();
@@ -517,7 +533,7 @@ window.addEventListener('DOMContentLoaded', () => {
   } else {
     if (loginView) loginView.classList.remove('hidden');
     if (dashboardView) dashboardView.classList.add('hidden');
-    if (userActions) userActions.add('hidden');
+    if (userActions) userActions.classList.add('hidden');
   }
 
   setInterval(updateDashboardData, 5000); 
