@@ -1,6 +1,3 @@
-/* ========================================================
-   🎯 THEME VARIABLES & LIGHT MODE VISIBILITY FIX
-   ======================================================== */
 :root {
   --bg: #0b1120;
   --bg-soft: rgba(15, 23, 42, 0.82);
@@ -28,54 +25,19 @@ body {
   background: radial-gradient(circle at top left, #6d28d9 0%, transparent 35%),
               radial-gradient(circle at bottom right, #06b6d4 0%, transparent 30%),
               linear-gradient(180deg, #0b1120 0%, #090f1d 100%);
-  transition: background 0.3s ease, color 0.3s ease;
 }
 
-/* ☀️ LIGHT MODE STYLES */
 body.light-mode {
-  --text: #1f2937;        /* Main Text ကို ခဲရောင်ရင့်ရင့် ပြောင်းသည် */
-  --muted: #4b5563;       /* Sub titles များကို ပိုမို ရှင်းလင်းစေသည် */
   color: #1f2937;
   background: radial-gradient(circle at top left, #c7d2fe 0%, transparent 35%),
               radial-gradient(circle at bottom right, #a7f3d0 0%, transparent 30%),
               linear-gradient(180deg, #f8fafc 0%, #e2e8f0 100%);
 }
 
-/* Light mode တွင် ကတ်များ နောက်ခံကို ဖြူပြီး စာလုံးအမည်း ပြောင်းခြင်း */
 body.light-mode .topbar,
-body.light-mode .card,
-body.light-mode .stat-card,
-body.light-mode .filter-card,
-body.light-mode .chart-card,
-body.light-mode .settings-card {
-  background: rgba(255, 255, 255, 0.9) !important;
-  color: #1f2937 !important;
+body.light-mode .card {
+  background: rgba(255, 255, 255, 0.9);
   border-color: rgba(148, 163, 184, 0.3);
-  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.05);
-}
-
-/* Light Mode အတွင်းရှိ စာတန်းများ အရောင် ညှိခြင်း */
-body.light-mode h1, 
-body.light-mode h2, 
-body.light-mode h3, 
-body.light-mode h4,
-body.light-mode label, 
-body.light-mode p,
-body.light-mode .info-text {
-  color: #1f2937 !important;
-}
-
-body.light-mode .stat-card h3 {
-  color: #4b5563 !important;
-}
-
-/* Light mode တွင် စက်များနှင့် အသုံးပြုသူ ဇယားများ ရှင်းလင်းအောင် ပြုပြင်ခြင်း */
-body.light-mode th {
-  color: #4b5563 !important;
-}
-body.light-mode td {
-  color: #1f2937 !important;
-  border-bottom: 1px solid rgba(148, 163, 184, 0.2);
 }
 
 body.light-mode .button-secondary {
@@ -89,14 +51,11 @@ body.light-mode .button-primary {
 
 body.light-mode input,
 body.light-mode select {
-  background: #fff !important;
-  color: #111827 !important;
-  border: 1px solid rgba(148, 163, 184, 0.5) !important;
+  background: #fff;
+  color: #111827;
+  border-color: rgba(148, 163, 184, 0.4);
 }
 
-/* ========================================================
-   🌐 GLOBAL STYLES & LAYOUTS
-   ======================================================== */
 button,
 input,
 select {
@@ -340,14 +299,14 @@ label {
 }
 
 /* ========================================================
-   🎯 BUTTON STYLES (ခလုတ်များကို တစ်ညီတစ်ညွတ်တည်း ညှိထားသည်)
+   🎯 BUTTON UNIFORMITY FIX (ခလုတ်များ တစ်ညီတစ်ညွတ်တည်းဖြစ်စေရန်)
    ======================================================== */
 .button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   
-  /* ခလုတ်အားလုံး ဗျက်အကျယ် နှင့် အမြင့်ကို တစ်ပြေးညီဖြစ်စေရန် */
+  /* 💡 ခလုတ်အားလုံး အရွယ်အစား တူညီသွားစေရန် ဗျက်အကျယ် နှင့် အမြင့် သတ်မှတ်ခြင်း */
   min-width: 140px; 
   height: 46px; 
   
@@ -444,9 +403,6 @@ body.light-mode .button-utility:hover {
   background: rgba(15, 23, 42, 0.1);
 }
 
-/* ========================================================
-   📊 DASHBOARD & DATA ELEMENTS
-   ======================================================== */
 .error-text {
   color: var(--danger);
   margin-top: 12px;
@@ -521,7 +477,6 @@ body.light-mode .button-utility:hover {
   min-height: 420px;
 }
 
-/* RESPONSIVE DESIGN MEDIA QUERIES */
 @media (max-width: 980px) {
   .dashboard-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
