@@ -210,20 +210,39 @@ function updateHistoryChart(deviceId, sensorLogs) {
 }
 
 // ========================================================
-// 📊 ၃။ DATA EXPORT SYSTEM FUNCTIONS
+// ========================================================
+// 📊 ၃။ DATA EXPORT SYSTEM FUNCTIONS (FIXED FOR DEVICE FILTER)
 // ========================================================
 function exportToCSV() {
   if (allSensorData.length === 0) { alert("No data to export!"); return; }
+  
+  // 🎯 Dropdown က ရွေးထားတဲ့ Device ID ကို ယူမယ်
+  const selectedDevice = document.getElementById('device-select')?.value;
+  
+  // ရွေးထားတဲ့ စက်ရှိရင် Filter လုပ်မယ်၊ မရွေးထားရင် အကုန်ထုတ်မယ်
+  let exportData = [...allSensorData];
+  if (selectedDevice) {
+    exportData = exportData.filter(item => item.device_id === selectedDevice);
+  }
+
+  if (exportData.length === 0) { alert("No data found for the selected device!"); return; }
+
   let csvContent = "data:text/csv;charset=utf-8,";
   csvContent += "Timestamp,Device ID,Temperature(C),Humidity(%),Door Status,Accel X,Accel Y,Accel Z\n";
-  allSensorData.forEach(row => {
+  
+  exportData.forEach(row => {
     let time = new Date(row.created_at).toLocaleString();
     csvContent += `"${time}","${row.device_id || ''}",${row.temperature},${row.humidity},"${row.door_status || ''}",${row.accel_x || 0},${row.accel_y || 0},${row.accel_z || 0}\n`;
   });
+  
   const encodedUri = encodeURI(csvContent);
   const link = document.createElement("a");
   link.setAttribute("href", encodedUri);
-  link.setAttribute("download", `elevator_report_${new Date().toISOString().slice(0,10)}.csv`);
+  
+  // File Name မှာလည်း စက်နာမည်ပါအောင် လုပ်ထားပါတယ်
+  const fileName = selectedDevice ? `elevator_report_${selectedDevice}_${new Date().toISOString().slice(0,10)}.csv` : `elevator_report_all_${new Date().toISOString().slice(0,10)}.csv`;
+  link.setAttribute("download", fileName);
+  
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
@@ -231,10 +250,25 @@ function exportToCSV() {
 
 function exportToJSON() {
   if (allSensorData.length === 0) { alert("No data to export!"); return; }
-  const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(allSensorData, null, 2));
+  
+  // 🎯 Dropdown က ရွေးထားတဲ့ Device ID ကို ယူမယ်
+  const selectedDevice = document.getElementById('device-select')?.value;
+  
+  // ရွေးထားတဲ့ စက်ရှိရင် Filter လုပ်မယ်၊ မရွေးထားရင် အကုန်ထုတ်မယ်
+  let exportData = [...allSensorData];
+  if (selectedDevice) {
+    exportData = exportData.filter(item => item.device_id === selectedDevice);
+  }
+
+  if (exportData.length === 0) { alert("No data found for the selected device!"); return; }
+
+  const dataStr = "data:text/json;charset=utf-8 Close," + encodeURIComponent(JSON.stringify(exportData, null, 2));
   const link = document.createElement("a");
   link.setAttribute("href", dataStr);
-  link.setAttribute("download", `elevator_report_${new Date().toISOString().slice(0,10)}.json`);
+  
+  const fileName = selectedDevice ? `elevator_report_${selectedDevice}_${new Date().toISOString().slice(0,10)}.json` : `elevator_report_all_${new Date().toISOString().slice(0,10)}.json`;
+  link.setAttribute("download", fileName);
+  
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
