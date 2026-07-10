@@ -382,16 +382,51 @@ window.deleteDevice = async (id) => {
   loadSettingsData();
 };
 
-// ၅။ Event Bindings & Init
+// ========================================================
+// 🎯 ၅။ Event Bindings & Initialization (အပြီးသတ် ဗားရှင်း)
+// ========================================================
 window.addEventListener('DOMContentLoaded', () => {
+  
+  // (က) Dashboard Filter & Export ခလုတ်များ ချိတ်ဆက်ခြင်း
   document.getElementById('filter-button')?.addEventListener('click', applyFiltersAndRender);
   document.getElementById('device-select')?.addEventListener('change', applyFiltersAndRender);
-  
   document.getElementById('export-csv')?.addEventListener('click', exportToCSV);
   document.getElementById('export-json')?.addEventListener('click', exportToJSON);
 
+  // (ခ) Theme Toggle (Dark/Light) ခလုတ်ကို Event Bind လုပ်ခြင်း
+  const themeToggleBtn = document.getElementById('theme-toggle');
+  if (themeToggleBtn) {
+    themeToggleBtn.addEventListener('click', () => {
+      document.body.classList.toggle('light-mode');
+      
+      if (document.body.classList.contains('light-mode')) {
+        localStorage.setItem('theme', 'light');
+        themeToggleBtn.textContent = 'Dark';
+      } else {
+        localStorage.setItem('theme', 'dark');
+        themeToggleBtn.textContent = 'Light';
+      }
+    });
+  }
+
+  // (ဂ) Language Selection Box ပြောင်းလဲမှုကို စောင့်ကြည့်ခြင်း (ရှိခဲ့လျှင်)
+  document.getElementById('language-select')?.addEventListener('change', (e) => {
+    const selectedLang = e.target.value;
+    localStorage.setItem('lang', selectedLang);
+    // 💡 ဘာသာစကားပြောင်းလဲမည့် function ရှိပါက ဤနေရာတွင် လှမ်းခေါ်နိုင်သည်
+    // ဥပမာ - changeLanguage(selectedLang);
+  });
+
+  // (ဃ) Login အခြေအနေစစ်ဆေးပြီး Dashboard ပေါ်မပေါ် ဆုံးဖြတ်ခြင်း
   if (localStorage.getItem('token')) { 
     showDashboard(); 
+  } else {
+    // Token မရှိပါက Login Screen ကို ပုံမှန်အတိုင်း ပြထားမည်
+    if (loginView) loginView.classList.remove('hidden');
+    if (dashboardView) dashboardView.classList.add('hidden');
+    if (userActions) userActions.classList.add('hidden');
   }
+
+  // (င) ဒေတာများကို ၅ စက္ကန့်တစ်ခါ real-time refresh စတင်လုပ်ဆောင်ခြင်း
   setInterval(updateDashboardData, 5000); 
 });
