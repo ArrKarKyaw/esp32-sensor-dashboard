@@ -6,7 +6,7 @@
     <title>Elevator Information Dashboard</title>
     <link rel="stylesheet" href="styles.css" />
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    </head>
+  </head>
   <body>
     <div class="app-shell">
       <header class="topbar">
@@ -60,6 +60,14 @@
         </section>
 
         <section id="dashboard-view" class="hidden">
+          
+          <div class="card lift-list-card" style="margin-bottom: 20px;">
+            <h3 style="color: #01919d; margin-top: 0; margin-bottom: 10px;">Active Elevators Status (Multi-ESP32 Nodes)</h3>
+            <div id="lift-status-list" style="display: flex; gap: 12px; flex-wrap: wrap;">
+              <p class="info-text" style="color: #aaa; margin: 0;">Detecting active elevator ESP32 units...</p>
+            </div>
+          </div>
+
           <div class="dashboard-grid">
             <div class="card stat-card">
               <h3>Temperature</h3>
@@ -73,8 +81,19 @@
               <h3>Pressure</h3>
               <p id="pressure-value">-- hPa</p>
             </div>
+            
             <div class="card stat-card">
-              <h3>Latest note</h3>
+              <h3>Door Status</h3>
+              <p id="door-status-value" style="font-weight: bold; color: #01919d;">--</p>
+            </div>
+
+            <div class="card stat-card" style="grid-column: span 2;">
+              <h3>Vibration / Real-time Motion (X, Y, Z Axis)</h3>
+              <p id="vibration-value" style="font-size: 1.1rem; line-height: 1.6; margin: 10px 0 0 0;">X: -- | Y: -- | Z: --</p>
+            </div>
+
+            <div class="card stat-card">
+              <h3>Latest Device Connection</h3>
               <p id="other-value">No data yet</p>
             </div>
           </div>
@@ -98,9 +117,10 @@
               </label>
               <button id="filter-button" class="button button-primary" data-i18n="applyButton">Apply</button>
             </div>
-            <div class="action-row">
-              <button id="export-csv" class="button button-secondary" data-i18n="exportCsv">Download CSV</button>
-              <button id="export-json" class="button button-secondary" data-i18n="exportJson">Download JSON</button>
+            
+            <div class="action-row" style="margin-top: 15px; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 15px;">
+              <button id="export-csv" class="button button-secondary" style="background-color: #01919d; color: white;" data-i18n="exportCsv">📥 Download CSV (Excel)</button>
+              <button id="export-json" class="button button-secondary" style="background-color: #36a2eb; color: white;" data-i18n="exportJson">📥 Download JSON</button>
             </div>
           </div>
 

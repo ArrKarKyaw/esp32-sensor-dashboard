@@ -1,52 +1,69 @@
 const { supabase } = require('./db');
 
 module.exports = async (req, res) => {
+  // CORS Headers သတ်မှတ်ချက်များ (ESP32 က တိုက်ရိုက်လှမ်းပို့နိုင်ရန်)
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-  if (req.method === 'OPTIONS') return res.status(200).end();
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
   
   if (req.method === 'POST') {
     try {
-      const { temperature, humidity, pressure, device_id } = req.body;
+      // ESP32 ဘက်က ပို့လိုက်တဲ့ JSON Body ထဲက ဒေတာများကို ဆွဲထုတ်ခြင်း
+      const { 
+        device_id, 
+        temperature, 
+        humidity, 
+        pressure, 
+        accel_x, 
+        accel_y, 
+        accel_z, 
+        door_status 
+      } = req.body;
 
-      if (temperature === undefined || humidity === undefined) {
-        return res.status(400).json({ error: 'Missing temperature or humidity' });
-      }
-
-      // သင့် Supabase Table Structure အတိုင်း ကွက်တိ ပြင်ဆင်ခြင်း
+      // Supabase database ထဲသို့ ထည့်သွင်းမည့် Object တည်ဆောက်ခြင်း
       const insertData = {
-        temperature: parseFloat(temperature),
-        humidity: parseFloat(humidity),
-        created_at: new Date()
+        device_id: device_id || "unknown-lift", // 🎯 ဓာတ်လှေကားခွဲခြားရန် ID
+        temperature: temperature !== undefined ? parseFloat(temperature) : null,
+        humidity: humidity !== undefined ? parseFloat(humidity) : null,
+        accel_x: accel_x !== undefined ? parseFloat(accel_x) : null,
+        accel_y: accel_y !== undefined ? parseFloat(accel_y) : null,
+        accel_z: accel_z !== undefined ? parseFloat(accel_z) : null,
+        door_status: door_status || 'Unknown', // 🎯 Door Status သိမ်းခြင်း
+        created_at: new Date() // အချိန်မှတ်တမ်း
       };
 
-      // တကယ်လို့ ESP32 ဘက်က pressure ပို့ရင် ထည့်မယ်၊ မပို့ရင် null ထားမယ်
+      // အကယ်၍ လေဖိအား (Pressure) ပါလာလျှင် ထည့်သွင်းသိမ်းဆည်းမည်
       if (pressure !== undefined) {
         insertData.pressure = parseFloat(pressure);
       }
 
-      // device_id က uuid ဖြစ်လို့ ပို့လာရင် ထည့်မယ် (မပို့ရင် null ထားမယ်)
-      if (device_id) {
-        insertData.device_id = device_id;
-      }
-
-      // Supabase ထဲသို့ သိမ်းဆည်းခြင်း
+      // Supabase `sensor_data` table ထဲသို့ ဒေတာအသစ် Insert လုပ်ခြင်း
       const { data, error } = await supabase
         .from('sensor_data')
         .insert([insertData])
         .select();
 
       if (error) {
-        console.error('Supabase Insert Error:', error.message);
+        console.error("Supabase Insertion Error:", error.message);
         return res.status(400).json({ error: error.message });
       }
 
-      return res.status(200).json({ message: 'Sensor data saved successfully!', data });
+      // အောင်မြင်ကြောင်း ESP32 ထံ Response ပြန်ခြင်း
+      return res.status(200).json({ 
+        message: 'All multi-sensor data saved successfully!', 
+        data 
+      });
 
     } catch (err) {
+      console.error("Server Catch Error:", err.message);
       return res.status(500).json({ error: err.message });
     }
   }
 
+  // POST မဟုတ်ဘဲ အခြား Method များဖြင့် လာခေါ်ပါက ပယ်ချခြင်း
   return res.status(405).json({ error: 'Method not allowed' });
 };
