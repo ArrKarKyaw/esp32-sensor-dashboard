@@ -279,7 +279,7 @@ function exportToJSON() {
 async function loadSettingsData() {
   const token = localStorage.getItem('token');
   
-  // ဌာနတွင်း အကောင့်များစာရင်း ဆွဲယူခြင်း
+  // ၁။ ဌာနတွင်း အကောင့်များစာရင်း ဆွဲယူခြင်း
   try {
     const resUsers = await fetch('/api/users', { headers: { 'Authorization': `Bearer ${token}` } });
     if (resUsers.ok) {
@@ -297,25 +297,31 @@ async function loadSettingsData() {
     }
   } catch (err) { console.error("Error loading users:", err); }
 
-  // 🎯 FIX: လမ်းကြောင်းကို /api/sensor (GET devices ရန်) သို့ ညွှန်းပေးခြင်း
+  // 🎯 ၂။ [FIXED]: ရှိပြီးသား /api/get-sensor ကို သုံးပြီး စက်ပစ္စည်းစာရင်းကို Group ဖွဲ့ထုတ်ယူခြင်း
   try {
-    const resDevices = await fetch('/api/sensor', { headers: { 'Authorization': `Bearer ${token}` } });
+    const resDevices = await fetch('/api/get-sensor'); 
     if (resDevices.ok) {
-      const devices = await resDevices.json();
+      const sensorLogs = await resDevices.json();
       if(devicesTableBody) {
-        // Express Server ကကျလာမယ့် devices array ကို Loop ပတ်ပြသခြင်း
-        devicesTableBody.innerHTML = (Array.isArray(devices) ? devices : []).map(d => `
-          <tr>
-            <td>${d.id}</td>
-            <td><code>${d.device_key}</code></td>
-            <td>${d.name}</td>
-            <td>${d.created_at ? new Date(d.created_at).toLocaleString() : 'Never'}</td>
-            <td>-- °C</td>
-            <td>-- %</td>
-            <td>-- hPa</td>
-            <td><button class="button button-danger btn-sm" onclick="deleteDevice('${d.id}')">Delete</button></td>
-          </tr>
-        `).join('');
+        // sensor_data ထဲမှာ ရှိသမျှ device_id တွေကို ထပ်မနေအောင် စစ်ထုတ်ခြင်း
+        const uniqueDevices = [...new Set(sensorLogs.map(d => d.device_id).filter(Boolean))];
+        
+        // စက်တစ်ခုချင်းစီရဲ့ နောက်ဆုံးရဒေတာကို ဇယားထဲမှာ ပြသခြင်း
+        devicesTableBody.innerHTML = uniqueDevices.map(devId => {
+          const d = sensorLogs.find(item => item.device_id === devId);
+          return `
+            <tr>
+              <td>-</td>
+              <td><code>${d.device_id}</code></td>
+              <td>Elevator Node</td>
+              <td>${d.created_at ? new Date(d.created_at).toLocaleString() : 'Never'}</td>
+              <td>${d.temperature !== null ? d.temperature.toFixed(1) : '--'} °C</td>
+              <td>${d.humidity !== null ? d.humidity.toFixed(1) : '--'} %</td>
+              <td>${d.pressure !== null ? d.pressure.toFixed(1) : '--'} hPa</td>
+              <td><button class="button button-danger btn-sm" disabled style="opacity:0.5; cursor:not-allowed;">Auto Connected</button></td>
+            </tr>
+          `;
+        }).join('');
       }
     }
   } catch (err) { console.error("Error loading devices:", err); }
