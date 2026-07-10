@@ -409,14 +409,13 @@ window.deleteDevice = async (id) => {
 };
 
 // ========================================================
-// 🧼 ၅။ FILTER AND UI RENDER LOGIC
+// 🧼 ၅။ FILTER AND UI RENDER LOGIC (TIMEZONE FIXED)
 // ========================================================
 function applyFiltersAndRender() {
-  // 🎯 Error မတက်အောင် Global variable ဖြစ်တဲ့ window.allSensorData ဆီကနေ စိတ်ချလက်ချ ယူပါတယ်
   let filteredData = [...window.allSensorData];
   const selectedDevice = document.getElementById('device-select')?.value;
 
-  // 🎯 Lift ကတ်တွေကို ဘယ်အချိန်မဆို နှိပ်လို့ရအောင် အမြဲ Render အရင်လုပ်ပေးထားပါတယ်
+  // Lift ကတ်တွေကို အမြဲ နှိပ်လို့ရအောင် Render အရင်လုပ်ပေးထားပါတယ်
   renderElevatorList(window.allSensorData);
 
   if (!selectedDevice) {
@@ -426,13 +425,24 @@ function applyFiltersAndRender() {
 
   filteredData = filteredData.filter(item => item.device_id === selectedDevice);
 
-  const startDateStr = document.getElementById('start-date')?.value;
-  const endDateStr = document.getElementById('end-date')?.value;
-  if (startDateStr) {
-    filteredData = filteredData.filter(item => new Date(item.created_at).getTime() >= new Date(startDateStr).getTime());
+  // 🎯 Timezone ကွာဟချက်ကို ဖြေရှင်းရန် ရက်စွဲစစ်ထုတ်မှုအပိုင်း
+  const startDateStr = document.getElementById('start-date')?.value; // Format: "YYYY-MM-DD"
+  const endDateStr = document.getElementById('end-date')?.value;     // Format: "YYYY-MM-DD"
+
+  if (startDateStr && startDateStr.trim() !== "") {
+    // ရွေးချယ်လိုက်တဲ့ ရက်စွဲရဲ့ အစောဆုံးအချိန် (ဥပမာ- 2026-07-10 00:00:00) အဖြစ် သတ်မှတ်ပါတယ်
+    const startDateTime = new Date(startDateStr + 'T00:00:00').getTime();
+    if (!isNaN(startDateTime)) {
+      filteredData = filteredData.filter(item => new Date(item.created_at).getTime() >= startDateTime);
+    }
   }
-  if (endDateStr) {
-    filteredData = filteredData.filter(item => new Date(item.created_at).getTime() <= new Date(endDateStr).getTime());
+
+  if (endDateStr && endDateStr.trim() !== "") {
+    // ရွေးချယ်လိုက်တဲ့ ရက်စွဲရဲ့ နောက်ဆုံးအချိန် (ဥပမာ- 2026-07-10 23:59:59) အထိ ယူပါတယ်
+    const endDateTime = new Date(endDateStr + 'T23:59:59').getTime();
+    if (!isNaN(endDateTime)) {
+      filteredData = filteredData.filter(item => new Date(item.created_at).getTime() <= endDateTime);
+    }
   }
 
   if (filteredData.length > 0) {
@@ -465,6 +475,10 @@ function applyFiltersAndRender() {
     updateHistoryChart(selectedDevice, filteredData);
   } else {
     resetUIElements();
+    // 🎯 ဒေတာတကယ်မရှိမှသာ အသိပေးစာပြစနစ် (Alert ကြီး ခဏခဏ မတက်အောင် လမ်းကြောင်းလွှဲထားပါတယ်)
+    if (document.getElementById('other-value')) {
+      document.getElementById('other-value').innerText = "No data found for this period.";
+    }
   }
 }
 
