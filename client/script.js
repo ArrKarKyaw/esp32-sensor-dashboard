@@ -37,6 +37,7 @@ if (loginForm) {
         body: JSON.stringify({ username, password })
       });
       if (!response.ok) throw new Error('Login failed');
+      
       const data = await response.json();
       localStorage.setItem('token', data.token);
       localStorage.setItem('username', data.username);
@@ -56,7 +57,6 @@ function showDashboard() {
   if (settingsView) settingsView.classList.add('hidden');
   if (dashboardView) dashboardView.classList.remove('hidden');
   if (userActions) userActions.classList.remove('hidden');
-  
   if (usernameLabel) usernameLabel.textContent = `Hello, ${localStorage.getItem('username')}`;
   
   const userRole = localStorage.getItem('role');
@@ -95,11 +95,9 @@ if (logoutButton) {
 // ========================================================
 async function updateDashboardData() {
   if (dashboardView && dashboardView.classList.contains('hidden')) return;
-
   try {
     const response = await fetch('/api/get-sensor');
     if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-    
     allSensorData = await response.json();
 
     if (allSensorData && allSensorData.length > 0) {
@@ -136,9 +134,12 @@ function renderElevatorList(data) {
       transition: all 0.2s ease;
     `;
     
+    // Multi-ESP Status Card မှာလည်း Temp မရှိရင် 0 မပြဘဲ -- ပြနိုင်အောင် ချိန်ညှိထားပါတယ်
+    const tempVal = (devData.temperature && devData.temperature > 0) ? devData.temperature.toFixed(1) + "°C" : "--°C";
+    
     liftCard.innerHTML = `
       <h4 style="margin:0 0 5px 0; color:#01919d; font-size:1.1rem;">${devId.toUpperCase()}</h4>
-      <p style="margin:3px 0; font-size:0.9rem;">Temp: <b>${devData.temperature ? devData.temperature.toFixed(1) : '0'}°C</b></p>
+      <p style="margin:3px 0; font-size:0.9rem;">Temp: <b>${tempVal}</b></p>
       <p style="margin:3px 0; font-size:0.9rem;">Door: <span style="color:${statusColor}; font-weight:bold;">${devData.door_status || 'Unknown'}</span></p>
     `;
     
@@ -156,8 +157,9 @@ function renderElevatorList(data) {
 
 function updateDeviceSelectOptions(data) {
   const deviceSelect = document.getElementById('device-select');
-  if (!deviceSelect || deviceSelect.options.length > 1) return; 
-
+  if (!deviceSelect) return;
+  const currentSelected = deviceSelect.value;
+  deviceSelect.innerHTML = '<option value="">-- Select Device --</option>';
   const uniqueDevices = [...new Set(data.map(item => item.device_id).filter(Boolean))];
   uniqueDevices.forEach(devKey => {
     let opt = document.createElement('option');
@@ -165,47 +167,8 @@ function updateDeviceSelectOptions(data) {
     opt.innerHTML = devKey.toUpperCase();
     deviceSelect.appendChild(opt);
   });
-}
-
-function applyFiltersAndRender() {
-  let filteredData = [...allSensorData];
-
-  const selectedDevice = document.getElementById('device-select')?.value;
-  if (selectedDevice) {
-    filteredData = filteredData.filter(item => item.device_id === selectedDevice);
-  }
-
-  const startDateStr = document.getElementById('start-date')?.value;
-  const endDateStr = document.getElementById('end-date')?.value;
-  if (startDateStr) {
-    filteredData = filteredData.filter(item => new Date(startDateStr).getTime() <= new Date(item.created_at).getTime());
-  }
-  if (endDateStr) {
-    filteredData = filteredData.filter(item => new Date(item.created_at).getTime() <= new Date(endDateStr).getTime());
-  }
-
-  if (filteredData.length > 0) {
-    const latest = filteredData[0];
-    
-    if(document.getElementById('temperature-value')) document.getElementById('temperature-value').innerText = latest.temperature ? latest.temperature.toFixed(1) + " °C" : "-- °C";
-    if(document.getElementById('humidity-value')) document.getElementById('humidity-value').innerText = latest.humidity ? latest.humidity.toFixed(1) + " %" : "-- %";
-    if(document.getElementById('pressure-value')) document.getElementById('pressure-value').innerText = latest.pressure ? latest.pressure.toFixed(1) + " hPa" : "-- hPa";
-    if(document.getElementById('other-value')) document.getElementById('other-value').innerText = latest.device_id ? `Active: ${latest.device_id.toUpperCase()}` : "--";
-    
-    if(document.getElementById('door-status-value')) {
-      document.getElementById('door-status-value').innerText = latest.door_status || "--";
-      document.getElementById('door-status-value').style.color = latest.door_status === "Open" ? "#ff6384" : "#4bc0c0";
-    }
-    
-    if(document.getElementById('vibration-value')) {
-      document.getElementById('vibration-value').innerHTML = `
-        X: <b>${latest.accel_x?.toFixed(2) || '0.00'}</b> m/s² | 
-        Y: <b>${latest.accel_y?.toFixed(2) || '0.00'}</b> m/s² | 
-        Z: <b>${latest.accel_z?.toFixed(2) || '0.00'}</b> m/s²
-      `;
-    }
-
-    updateHistoryChart(filteredData);
+  if (currentSelected) {
+    deviceSelect.value = currentSelected;
   }
 }
 
@@ -215,9 +178,8 @@ function updateHistoryChart(sensorLogs) {
 
   const reversedLogs = [...sensorLogs].slice(0, 20).reverse();
   const labels = reversedLogs.map(log => new Date(log.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
-  const tempDataset = reversedLogs.map(log => log.temperature);
-  const humidDataset = reversedLogs.map(log => log.humidity);
-
+  const tempDataset = reversedLogs.map(log => log.temperature || null);
+  const humidDataset = reversedLogs.map(log => log.humidity || null);
   if (historyChart) {
     historyChart.data.labels = labels;
     historyChart.data.datasets[0].data = tempDataset;
@@ -244,7 +206,7 @@ function updateHistoryChart(sensorLogs) {
 function exportToCSV() {
   if (allSensorData.length === 0) { alert("No data to export!"); return; }
   let csvContent = "data:text/csv;charset=utf-8,";
-  csvContent += "Timestamp,Device ID,Temperature(C),Humidity(%),Door Status,Accel X,Accel Y,Accel Z\n"; 
+  csvContent += "Timestamp,Device ID,Temperature(C),Humidity(%),Door Status,Accel X,Accel Y,Accel Z\n";
   allSensorData.forEach(row => {
     let time = new Date(row.created_at).toLocaleString();
     csvContent += `"${time}","${row.device_id || ''}",${row.temperature},${row.humidity},"${row.door_status || ''}",${row.accel_x || 0},${row.accel_y || 0},${row.accel_z || 0}\n`;
@@ -274,8 +236,6 @@ function exportToJSON() {
 // ========================================================
 async function loadSettingsData() {
   const token = localStorage.getItem('token');
-  
-  // (က) အကောင့်များစာရင်း ဆွဲယူခြင်း
   try {
     const resUsers = await fetch('/api/users', { headers: { 'Authorization': `Bearer ${token}` } });
     if (resUsers.ok) {
@@ -297,14 +257,11 @@ async function loadSettingsData() {
     }
   } catch (err) { console.error("Error loading users:", err); }
 
-  // (ခ) စက်ပစ္စည်းစာရင်းအား Online/Offline ဖြင့် ပြသခြင်း
   try {
-    // လက်ရှိ စက်တွေရဲ့ sensor data logs အခြေအနေကို အရင်လှမ်းယူပြီး Online/Offline သတ်မှတ်ရန်
     const resLogs = await fetch('/api/get-sensor');
     let activeDeviceIds = [];
     if (resLogs.ok) {
       const logs = await resLogs.json();
-      // လွန်ခဲ့သော ၅ မိနစ်အတွင်း ဒေတာဝင်ဖူးသော စက်များကို Online ဟု ယူဆရန်
       const fiveMinutesAgo = Date.now() - (5 * 60 * 1000);
       activeDeviceIds = logs
         .filter(log => new Date(log.created_at).getTime() > fiveMinutesAgo)
@@ -315,8 +272,6 @@ async function loadSettingsData() {
     if (resDevices.ok) {
       const devices = await resDevices.json();
       if(devicesTableBody) {
-        
-        // Table Header ကို Temp, Hum, Pressure အစား Status တစ်ခုတည်းပြောင်းလဲခြင်း
         const tableHeader = devicesTableBody.closest('table').querySelector('thead tr');
         if (tableHeader) {
           tableHeader.innerHTML = `
@@ -355,7 +310,6 @@ async function loadSettingsData() {
   } catch (err) { console.error("Error loading devices:", err); }
 }
 
-// Handle: Create User Account
 if (createUserForm) {
   createUserForm.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -380,7 +334,6 @@ if (createUserForm) {
   });
 }
 
-// Handle: Register New Device
 if (createDeviceForm) {
   createDeviceForm.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -404,7 +357,6 @@ if (createDeviceForm) {
   });
 }
 
-// Global scope functions for button clicks
 window.deleteUser = async (id) => {
   if(!confirm("Are you sure to delete this user account?")) return;
   const token = localStorage.getItem('token');
@@ -420,7 +372,93 @@ window.deleteDevice = async (id) => {
 };
 
 // ========================================================
-// 🎯 ၅။ Event Bindings & Initialization
+// 🧼 ၅။ FILTER AND UI RENDER LOGIC (ADDED & FIXED THE BUG)
+// ========================================================
+function applyFiltersAndRender() {
+  let filteredData = [...allSensorData];
+  const selectedDevice = document.getElementById('device-select')?.value;
+
+  // ၁။ Dropdown မှာ ဘာမှမရွေးထားရင် UI ကို Clear လုပ်ပြီး ရပ်ပစ်မယ်
+  if (!selectedDevice) {
+    resetUIElements();
+    return;
+  }
+
+  // ၂။ ရွေးထားတဲ့ စက် ID နဲ့ပဲ Filter လုပ်မယ်
+  filteredData = filteredData.filter(item => item.device_id === selectedDevice);
+
+  // ရက်စွဲ Filters
+  const startDateStr = document.getElementById('start-date')?.value;
+  const endDateStr = document.getElementById('end-date')?.value;
+  if (startDateStr) {
+    filteredData = filteredData.filter(item => new Date(item.created_at).getTime() >= new Date(startDateStr).getTime());
+  }
+  if (endDateStr) {
+    filteredData = filteredData.filter(item => new Date(item.created_at).getTime() <= new Date(endDateStr).getTime());
+  }
+
+  // ၃။ Filter လုပ်လို့ရလာတဲ့ အနီးစပ်ဆုံး နောက်ဆုံးရ ဒေတာကို UI ပေါ်တင်မယ်
+  if (filteredData.length > 0) {
+    const latest = filteredData[0];
+    
+    // 🎯 [အရေးကြီးဆုံးအပိုင်း] အရင်ဆုံး UI ဒေတာဟောင်းတွေကို Clear အကုန်လုပ်ပစ်မယ်
+    resetUIElements();
+
+    // Temperature sensor ပါပြီး တန်ဖိုးရှိမှသာ ပြမယ် (မပါရင် -- °C အတိုင်း ကျန်ခဲ့မယ်)
+    if (document.getElementById('temperature-value') && latest.temperature && latest.temperature > 0) {
+      document.getElementById('temperature-value').innerText = latest.temperature.toFixed(1) + " °C";
+    }
+    
+    // Humidity ရှိမှပြမယ်
+    if (document.getElementById('humidity-value') && latest.humidity && latest.humidity > 0) {
+      document.getElementById('humidity-value').innerText = latest.humidity.toFixed(1) + " %";
+    }
+    
+    // Pressure ရှိမှပြမယ်
+    if (document.getElementById('pressure-value') && latest.pressure && latest.pressure > 0) {
+      document.getElementById('pressure-value').innerText = latest.pressure.toFixed(1) + " hPa";
+    }
+    
+    if (document.getElementById('other-value')) {
+      document.getElementById('other-value').innerText = latest.device_id ? `Active: ${latest.device_id.toUpperCase()}` : "--";
+    }
+    
+    if (document.getElementById('door-status-value')) {
+      document.getElementById('door-status-value').innerText = latest.door_status || "--";
+      document.getElementById('door-status-value').style.color = latest.door_status === "Open" ? "#ff6384" : "#4bc0c0";
+    }
+    
+    if (document.getElementById('vibration-value')) {
+      document.getElementById('vibration-value').innerHTML = `
+        X: <b>${latest.accel_x?.toFixed(2) || '0.00'}</b> m/s² | 
+        Y: <b>${latest.accel_y?.toFixed(2) || '0.00'}</b> m/s² | 
+        Z: <b>${latest.accel_z?.toFixed(2) || '0.00'}</b> m/s²
+      `;
+    }
+
+    updateHistoryChart(filteredData);
+  } else {
+    resetUIElements();
+  }
+}
+
+// UI ဒေတာဟောင်းတွေကို ဆေးကြောသန့်စင်ပေးမယ့် Function
+function resetUIElements() {
+  if (document.getElementById('temperature-value')) document.getElementById('temperature-value').innerText = "-- °C";
+  if (document.getElementById('humidity-value')) document.getElementById('humidity-value').innerText = "-- %";
+  if (document.getElementById('pressure-value')) document.getElementById('pressure-value').innerText = "-- hPa";
+  if (document.getElementById('other-value')) document.getElementById('other-value').innerText = "Please select a device";
+  if (document.getElementById('door-status-value')) {
+    document.getElementById('door-status-value').innerText = "--";
+    document.getElementById('door-status-value').style.color = "#ffffff";
+  }
+  if (document.getElementById('vibration-value')) {
+    document.getElementById('vibration-value').innerHTML = "X: -- | Y: -- | Z: --";
+  }
+}
+
+// ========================================================
+// 🎯 ၆။ Event Bindings & Initialization
 // ========================================================
 window.addEventListener('DOMContentLoaded', () => {
   document.getElementById('filter-button')?.addEventListener('click', applyFiltersAndRender);
@@ -443,7 +481,7 @@ window.addEventListener('DOMContentLoaded', () => {
   }
 
   if (localStorage.getItem('token')) { 
-    showDashboard(); 
+    showDashboard();
   } else {
     if (loginView) loginView.classList.remove('hidden');
     if (dashboardView) dashboardView.classList.add('hidden');
