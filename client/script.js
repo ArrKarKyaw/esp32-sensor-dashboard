@@ -97,7 +97,6 @@ async function updateDashboardData() {
   if (dashboardView && dashboardView.classList.contains('hidden')) return;
 
   try {
-    // ပင်မ Dashboard အတွက် ရှိပြီးသား /api/get-sensor ထံမှ ဒေတာဆွဲယူခြင်း
     const response = await fetch('/api/get-sensor');
     if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
     
@@ -179,7 +178,7 @@ function applyFiltersAndRender() {
   const startDateStr = document.getElementById('start-date')?.value;
   const endDateStr = document.getElementById('end-date')?.value;
   if (startDateStr) {
-    filteredData = filteredData.filter(item => new Date(item.created_at).getTime() >= new Date(startDateStr).getTime());
+    filteredData = filteredData.filter(item => new Date(startDateStr).getTime() <= new Date(item.created_at).getTime());
   }
   if (endDateStr) {
     filteredData = filteredData.filter(item => new Date(item.created_at).getTime() <= new Date(endDateStr).getTime());
@@ -271,12 +270,12 @@ function exportToJSON() {
 }
 
 // ========================================================
-// ⚙️ ၄။ ADMIN SETTINGS - USER & DEVICE MANAGEMENT (RESTORED)
+// ⚙️ ၄။ ADMIN SETTINGS - USER & DEVICE MANAGEMENT (UPDATED)
 // ========================================================
 async function loadSettingsData() {
   const token = localStorage.getItem('token');
   
-  // (က) သီးသန့်ဆောက်ထားသော /api/users Endpoint မှ အကောင့်စာရင်းဆွဲယူခြင်း
+  // (က) အကောင့်များစာရင်း ဆွဲယူခြင်း
   try {
     const resUsers = await fetch('/api/users', { headers: { 'Authorization': `Bearer ${token}` } });
     if (resUsers.ok) {
@@ -287,31 +286,70 @@ async function loadSettingsData() {
             <td>${u.id}</td>
             <td><b>${u.username}</b></td>
             <td><span class="badge badge-${u.role}">${u.role}</span></td>
-            <td><button class="button button-danger btn-sm" onclick="deleteUser(${u.id})">Delete</button></td>
+            <td>
+              <button class="button button-danger btn-sm" style="color: #ffffff; background-color: #dc3545;" onclick="deleteUser(${u.id})">
+                Delete
+              </button>
+            </td>
           </tr>
         `).join('');
       }
     }
   } catch (err) { console.error("Error loading users:", err); }
 
-  // (ခ) သီးသန့်ဆောက်ထားသော /api/devices Endpoint မှ စက်ပစ္စည်းစစ်စစ်စာရင်း ဆွဲယူခြင်း
+  // (ခ) စက်ပစ္စည်းစာရင်းအား Online/Offline ဖြင့် ပြသခြင်း
   try {
+    // လက်ရှိ စက်တွေရဲ့ sensor data logs အခြေအနေကို အရင်လှမ်းယူပြီး Online/Offline သတ်မှတ်ရန်
+    const resLogs = await fetch('/api/get-sensor');
+    let activeDeviceIds = [];
+    if (resLogs.ok) {
+      const logs = await resLogs.json();
+      // လွန်ခဲ့သော ၅ မိနစ်အတွင်း ဒေတာဝင်ဖူးသော စက်များကို Online ဟု ယူဆရန်
+      const fiveMinutesAgo = Date.now() - (5 * 60 * 1000);
+      activeDeviceIds = logs
+        .filter(log => new Date(log.created_at).getTime() > fiveMinutesAgo)
+        .map(log => log.device_id);
+    }
+
     const resDevices = await fetch('/api/devices', { headers: { 'Authorization': `Bearer ${token}` } });
     if (resDevices.ok) {
       const devices = await resDevices.json();
       if(devicesTableBody) {
-        devicesTableBody.innerHTML = devices.map(d => `
-          <tr>
-            <td>${d.id}</td>
-            <td><code>${d.device_key}</code></td>
-            <td>${d.name || 'Unnamed Sensor'}</td>
-            <td>${d.created_at ? new Date(d.created_at).toLocaleString() : 'Never'}</td>
-            <td>-- °C</td>
-            <td>-- %</td>
-            <td>-- hPa</td>
-            <td><button class="button button-danger btn-sm" onclick="deleteDevice('${d.id}')">Delete</button></td>
-          </tr>
-        `).join('');
+        
+        // Table Header ကို Temp, Hum, Pressure အစား Status တစ်ခုတည်းပြောင်းလဲခြင်း
+        const tableHeader = devicesTableBody.closest('table').querySelector('thead tr');
+        if (tableHeader) {
+          tableHeader.innerHTML = `
+            <th>ID</th>
+            <th>Key</th>
+            <th>Name</th>
+            <th>Last Seen</th>
+            <th>Status</th>
+            <th>Actions</th>
+          `;
+        }
+
+        devicesTableBody.innerHTML = devices.map(d => {
+          const isOnline = activeDeviceIds.includes(d.device_key || d.id);
+          const statusBadge = isOnline 
+            ? `<span class="badge" style="background-color: #28a745; color: white; padding: 4px 8px; border-radius: 4px;">Online</span>`
+            : `<span class="badge" style="background-color: #6c757d; color: white; padding: 4px 8px; border-radius: 4px;">Offline</span>`;
+
+          return `
+            <tr>
+              <td>${d.id}</td>
+              <td><code>${d.device_key || d.id}</code></td>
+              <td>${d.name || 'Unnamed Sensor'}</td>
+              <td>${d.created_at ? new Date(d.created_at).toLocaleString() : 'Never'}</td>
+              <td>${statusBadge}</td>
+              <td>
+                <button class="button button-danger btn-sm" style="color: #ffffff; background-color: #dc3545;" onclick="deleteDevice('${d.id}')">
+                  Delete
+                </button>
+              </td>
+            </tr>
+          `;
+        }).join('');
       }
     }
   } catch (err) { console.error("Error loading devices:", err); }
