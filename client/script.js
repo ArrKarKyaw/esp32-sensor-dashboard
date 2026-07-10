@@ -40,7 +40,7 @@ if (loginForm) {
       const data = await response.json();
       localStorage.setItem('token', data.token);
       localStorage.setItem('username', data.username);
-      localStorage.setItem('role', data.role || 'user'); // Role ကိုပါ မှတ်ထားမည်
+      localStorage.setItem('role', data.role || 'user'); 
       showDashboard();
     } catch (err) {
       if (loginError) { 
@@ -59,7 +59,6 @@ function showDashboard() {
   
   if (usernameLabel) usernameLabel.textContent = `Hello, ${localStorage.getItem('username')}`;
   
-  // 🎯 Admin သို့မဟုတ် Manager ဖြစ်မှ Settings ခလုတ်ကို ပေါ်အောင်လုပ်ခြင်း
   const userRole = localStorage.getItem('role');
   if (settingsButton && (userRole === 'admin' || userRole === 'manager')) {
     settingsButton.classList.remove('hidden');
@@ -73,7 +72,7 @@ if (settingsButton) {
   settingsButton.addEventListener('click', () => {
     if (dashboardView) dashboardView.classList.add('hidden');
     if (settingsView) settingsView.classList.remove('hidden');
-    loadSettingsData(); // User နှင့် Device စာရင်းများကို ဆွဲယူပြသရန်
+    loadSettingsData(); 
   });
 }
 
@@ -98,13 +97,11 @@ async function updateDashboardData() {
   if (dashboardView && dashboardView.classList.contains('hidden')) return;
 
   try {
-    // 🎯 FIX: လမ်းကြောင်းကို /api/sensor (POST ဒေတာတွေအကုန်ပြန်ဆွဲထုတ်ရန်) သို့ ပြောင်းလဲခြင်း
-    const response = await fetch('/api/sensor');
+    // ပင်မ Dashboard အတွက် ရှိပြီးသား /api/get-sensor ထံမှ ဒေတာဆွဲယူခြင်း
+    const response = await fetch('/api/get-sensor');
     if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
     
-    // Express Server ဆီကကျလာတဲ့ JSON array ကို လက်ခံခြင်း
-    const rawData = await response.json();
-    allSensorData = Array.isArray(rawData) ? rawData : (rawData.data ? [rawData.data] : []);
+    allSensorData = await response.json();
 
     if (allSensorData && allSensorData.length > 0) {
       renderElevatorList(allSensorData);
@@ -274,12 +271,12 @@ function exportToJSON() {
 }
 
 // ========================================================
-// ⚙️ ၄။ ADMIN SETTINGS, USER & DEVICE CREATION SYSTEM (FIXED)
+// ⚙️ ၄။ ADMIN SETTINGS - USER & DEVICE MANAGEMENT (RESTORED)
 // ========================================================
 async function loadSettingsData() {
   const token = localStorage.getItem('token');
   
-  // ၁။ ဌာနတွင်း အကောင့်များစာရင်း ဆွဲယူခြင်း
+  // (က) သီးသန့်ဆောက်ထားသော /api/users Endpoint မှ အကောင့်စာရင်းဆွဲယူခြင်း
   try {
     const resUsers = await fetch('/api/users', { headers: { 'Authorization': `Bearer ${token}` } });
     if (resUsers.ok) {
@@ -297,31 +294,24 @@ async function loadSettingsData() {
     }
   } catch (err) { console.error("Error loading users:", err); }
 
-  // 🎯 ၂။ [FIXED]: ရှိပြီးသား /api/get-sensor ကို သုံးပြီး စက်ပစ္စည်းစာရင်းကို Group ဖွဲ့ထုတ်ယူခြင်း
+  // (ခ) သီးသန့်ဆောက်ထားသော /api/devices Endpoint မှ စက်ပစ္စည်းစစ်စစ်စာရင်း ဆွဲယူခြင်း
   try {
-    const resDevices = await fetch('/api/get-sensor'); 
+    const resDevices = await fetch('/api/devices', { headers: { 'Authorization': `Bearer ${token}` } });
     if (resDevices.ok) {
-      const sensorLogs = await resDevices.json();
+      const devices = await resDevices.json();
       if(devicesTableBody) {
-        // sensor_data ထဲမှာ ရှိသမျှ device_id တွေကို ထပ်မနေအောင် စစ်ထုတ်ခြင်း
-        const uniqueDevices = [...new Set(sensorLogs.map(d => d.device_id).filter(Boolean))];
-        
-        // စက်တစ်ခုချင်းစီရဲ့ နောက်ဆုံးရဒေတာကို ဇယားထဲမှာ ပြသခြင်း
-        devicesTableBody.innerHTML = uniqueDevices.map(devId => {
-          const d = sensorLogs.find(item => item.device_id === devId);
-          return `
-            <tr>
-              <td>-</td>
-              <td><code>${d.device_id}</code></td>
-              <td>Elevator Node</td>
-              <td>${d.created_at ? new Date(d.created_at).toLocaleString() : 'Never'}</td>
-              <td>${d.temperature !== null ? d.temperature.toFixed(1) : '--'} °C</td>
-              <td>${d.humidity !== null ? d.humidity.toFixed(1) : '--'} %</td>
-              <td>${d.pressure !== null ? d.pressure.toFixed(1) : '--'} hPa</td>
-              <td><button class="button button-danger btn-sm" disabled style="opacity:0.5; cursor:not-allowed;">Auto Connected</button></td>
-            </tr>
-          `;
-        }).join('');
+        devicesTableBody.innerHTML = devices.map(d => `
+          <tr>
+            <td>${d.id}</td>
+            <td><code>${d.device_key}</code></td>
+            <td>${d.name || 'Unnamed Sensor'}</td>
+            <td>${d.created_at ? new Date(d.created_at).toLocaleString() : 'Never'}</td>
+            <td>-- °C</td>
+            <td>-- %</td>
+            <td>-- hPa</td>
+            <td><button class="button button-danger btn-sm" onclick="deleteDevice('${d.id}')">Delete</button></td>
+          </tr>
+        `).join('');
       }
     }
   } catch (err) { console.error("Error loading devices:", err); }
@@ -331,7 +321,6 @@ async function loadSettingsData() {
 if (createUserForm) {
   createUserForm.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const email = document.getElementById('new-email').value.trim();
     const username = document.getElementById('new-username').value.trim();
     const password = document.getElementById('new-password').value;
     const role = document.getElementById('new-role').value;
@@ -341,7 +330,7 @@ if (createUserForm) {
       const response = await fetch('/api/users', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify({ email, username, password, role })
+        body: JSON.stringify({ username, password, role })
       });
       if (!response.ok) { const errData = await response.json(); throw new Error(errData.error || 'Failed to create user'); }
       createUserForm.reset();
@@ -362,11 +351,10 @@ if (createDeviceForm) {
     const token = localStorage.getItem('token');
 
     try {
-      // 🎯 FIX: လမ်းကြောင်းကို /api/sensor နှင့် Payload ကို device_key သို့ ပြောင်းလဲခြင်း
-      const response = await fetch('/api/sensor', {
+      const response = await fetch('/api/devices', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify({ device_key: deviceKey, name }) 
+        body: JSON.stringify({ deviceKey, name })
       });
       if (!response.ok) { const errData = await response.json(); throw new Error(errData.error || 'Failed to create device'); }
       createDeviceForm.reset();
@@ -378,7 +366,7 @@ if (createDeviceForm) {
   });
 }
 
-// Delete functions to global scope for button clicks
+// Global scope functions for button clicks
 window.deleteUser = async (id) => {
   if(!confirm("Are you sure to delete this user account?")) return;
   const token = localStorage.getItem('token');
@@ -389,28 +377,23 @@ window.deleteUser = async (id) => {
 window.deleteDevice = async (id) => {
   if(!confirm("Are you sure to delete this device?")) return;
   const token = localStorage.getItem('token');
-  // 🎯 FIX: String ID Type (ဥပမာ- 'lift-01') ကိုပါ Delete လုပ်နိုင်ရန် ညွှန်းပေးခြင်း
-  await fetch(`/api/sensor?id=${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
+  await fetch(`/api/devices?id=${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
   loadSettingsData();
 };
 
 // ========================================================
-// 🎯 ၅။ Event Bindings & Initialization (အပြီးသတ် ဗားရှင်း)
+// 🎯 ၅။ Event Bindings & Initialization
 // ========================================================
 window.addEventListener('DOMContentLoaded', () => {
-  
-  // (က) Dashboard Filter & Export ခလုတ်များ ချိတ်ဆက်ခြင်း
   document.getElementById('filter-button')?.addEventListener('click', applyFiltersAndRender);
   document.getElementById('device-select')?.addEventListener('change', applyFiltersAndRender);
   document.getElementById('export-csv')?.addEventListener('click', exportToCSV);
   document.getElementById('export-json')?.addEventListener('click', exportToJSON);
 
-  // (ခ) Theme Toggle (Dark/Light) ခလုတ်ကို Event Bind လုပ်ခြင်း
   const themeToggleBtn = document.getElementById('theme-toggle');
   if (themeToggleBtn) {
     themeToggleBtn.addEventListener('click', () => {
       document.body.classList.toggle('light-mode');
-      
       if (document.body.classList.contains('light-mode')) {
         localStorage.setItem('theme', 'light');
         themeToggleBtn.textContent = 'Dark';
@@ -421,7 +404,6 @@ window.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // (ဂ) Login အခြေအနေစစ်ဆေးပြီး Dashboard ပေါ်မပေါ် ဆုံးဖြတ်ခြင်း
   if (localStorage.getItem('token')) { 
     showDashboard(); 
   } else {
@@ -430,6 +412,5 @@ window.addEventListener('DOMContentLoaded', () => {
     if (userActions) userActions.classList.add('hidden');
   }
 
-  // (ဃ) ဒေတာများကို ၅ စက္ကန့်တစ်ခါ real-time refresh စတင်လုပ်ဆောင်ခြင်း
   setInterval(updateDashboardData, 5000); 
 });
