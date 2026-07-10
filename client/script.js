@@ -414,11 +414,14 @@ window.deleteDevice = async (id) => {
 };
 
 // ========================================================
-// 🧼 ၅။ FILTER AND UI RENDER LOGIC
+// 🧼 ၅။ FILTER AND UI RENDER LOGIC (FIXED)
 // ========================================================
 function applyFiltersAndRender() {
   let filteredData = [...allSensorData];
   const selectedDevice = document.getElementById('device-select')?.value;
+
+  // 🎯 Lift ကတ်တွေ အမြဲရှိနေစေဖို့အတွက် Filter လုပ်တိုင်း ကတ်တွေကို အရင် ပြန် Render လုပ်ပေးရပါမယ်
+  renderElevatorList(allSensorData);
 
   if (!selectedDevice) {
     resetUIElements();
@@ -438,7 +441,6 @@ function applyFiltersAndRender() {
 
   if (filteredData.length > 0) {
     const latest = filteredData[0];
-    resetUIElements();
 
     if (document.getElementById('temperature-value')) {
       document.getElementById('temperature-value').innerText = (latest.temperature && latest.temperature > 0) ? latest.temperature.toFixed(1) + " °C" : "-- °C";
@@ -467,6 +469,9 @@ function applyFiltersAndRender() {
     updateHistoryChart(selectedDevice, filteredData);
   } else {
     resetUIElements();
+    if (document.getElementById('other-value')) {
+      document.getElementById('other-value').innerText = "No data found for this device/date filter!";
+    }
   }
 }
 
