@@ -101,7 +101,7 @@ async function updateDashboardData() {
     const rawData = await response.json();
 
     if (rawData && rawData.length > 0) {
-      // 🎯 ပြင်ဆင်ချက်- နောက်ဆုံးပေါ်ဒေတာ အမြဲတမ်း ထိပ်ဆုံးရောက်နေအောင် Sort လုပ်ခြင်း
+      // 🎯 ဒေတာအသစ်ဆုံးတွေကို ထိပ်ဆုံးကနေ အမြဲတမ်း စီပေးထားပါတယ်
       allSensorData = [...rawData].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
       renderElevatorList(allSensorData);
@@ -181,7 +181,6 @@ function updateHistoryChart(deviceId, sensorLogs) {
   const ctx = document.getElementById('history-chart');
   if (!ctx) return;
 
-  // 🎯 Chart ဆွဲဖို့အတွက် အချိန်အစဉ်လိုက် (အဟောင်းကနေ အသစ်) ပြန်စီပေးထားပါတယ်
   const reversedLogs = [...sensorLogs].slice(0, 20).reverse();
   const labels = reversedLogs.map(log => new Date(log.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
 
@@ -213,7 +212,7 @@ function updateHistoryChart(deviceId, sensorLogs) {
 }
 
 // ========================================================
-// 📊 ၃။ DATA EXPORT SYSTEM FUNCTIONS
+// 📊 ၃။ DATA EXPORT SYSTEM FUNCTIONS (FIXED)
 // ========================================================
 function getFilteredExportData() {
   let exportData = [...allSensorData];
@@ -221,10 +220,12 @@ function getFilteredExportData() {
   const startDateStr = document.getElementById('start-date')?.value;
   const endDateStr = document.getElementById('end-date')?.value;
 
+  // ၁။ Device ID Filter
   if (selectedDevice) {
     exportData = exportData.filter(item => item.device_id === selectedDevice);
   }
 
+  // ၂။ Start Date Filter (စာသားအလွတ်ဖြစ်နေရင် ကျော်သွားမယ်)
   if (startDateStr && startDateStr.trim() !== "") {
     const startTime = new Date(startDateStr).getTime();
     if (!isNaN(startTime)) {
@@ -232,6 +233,7 @@ function getFilteredExportData() {
     }
   }
 
+  // ၃။ End Date Filter (စာသားအလွတ်ဖြစ်နေရင် ကျော်သွားမယ်)
   if (endDateStr && endDateStr.trim() !== "") {
     const endTime = new Date(endDateStr).getTime();
     if (!isNaN(endTime)) {
@@ -266,6 +268,7 @@ function exportToCSV() {
   document.body.removeChild(link);
 }
 
+// JSON Export စနစ်
 function exportToJSON() {
   const { exportData, selectedDevice } = getFilteredExportData();
   if (exportData.length === 0) { alert("No data found for the selected criteria!"); return; }
@@ -323,18 +326,6 @@ async function loadSettingsData() {
     if (resDevices.ok) {
       const devices = await resDevices.json();
       if(devicesTableBody) {
-        const tableHeader = devicesTableBody.closest('table').querySelector('thead tr');
-        if (tableHeader) {
-          tableHeader.innerHTML = `
-            <th>ID</th>
-            <th>Key</th>
-            <th>Name</th>
-            <th>Last Seen</th>
-            <th>Status</th>
-            <th>Actions</th>
-          `;
-        }
-
         devicesTableBody.innerHTML = devices.map(d => {
           const isOnline = activeDeviceIds.includes(d.device_key || d.id);
           const statusBadge = isOnline 
@@ -446,7 +437,6 @@ function applyFiltersAndRender() {
   }
 
   if (filteredData.length > 0) {
-    // 🎯 ပြင်ဆင်ချက်- Sort လုပ်ထားလို့ Index 0 က အမြဲတမ်း နောက်ဆုံးပေါ် (Latest) ဒေတာအစစ်ဖြစ်နေပါပြီ
     const latest = filteredData[0];
     resetUIElements();
 
