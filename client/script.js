@@ -98,10 +98,13 @@ async function updateDashboardData() {
   if (dashboardView && dashboardView.classList.contains('hidden')) return;
 
   try {
-    const response = await fetch('/api/get-sensor');
+    // 🎯 FIX: လမ်းကြောင်းကို /api/sensor (POST ဒေတာတွေအကုန်ပြန်ဆွဲထုတ်ရန်) သို့ ပြောင်းလဲခြင်း
+    const response = await fetch('/api/sensor');
     if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
     
-    allSensorData = await response.json(); 
+    // Express Server ဆီကကျလာတဲ့ JSON array ကို လက်ခံခြင်း
+    const rawData = await response.json();
+    allSensorData = Array.isArray(rawData) ? rawData : (rawData.data ? [rawData.data] : []);
 
     if (allSensorData && allSensorData.length > 0) {
       renderElevatorList(allSensorData);
@@ -294,22 +297,23 @@ async function loadSettingsData() {
     }
   } catch (err) { console.error("Error loading users:", err); }
 
-  // မှတ်ပုံတင်ထားသော စက်ပစ္စည်း (ESP32) စာရင်း ဆွဲယူခြင်း
+  // 🎯 FIX: လမ်းကြောင်းကို /api/sensor (GET devices ရန်) သို့ ညွှန်းပေးခြင်း
   try {
-    const resDevices = await fetch('/api/devices', { headers: { 'Authorization': `Bearer ${token}` } });
+    const resDevices = await fetch('/api/sensor', { headers: { 'Authorization': `Bearer ${token}` } });
     if (resDevices.ok) {
       const devices = await resDevices.json();
       if(devicesTableBody) {
-        devicesTableBody.innerHTML = devices.map(d => `
+        // Express Server ကကျလာမယ့် devices array ကို Loop ပတ်ပြသခြင်း
+        devicesTableBody.innerHTML = (Array.isArray(devices) ? devices : []).map(d => `
           <tr>
             <td>${d.id}</td>
             <td><code>${d.device_key}</code></td>
             <td>${d.name}</td>
-            <td>${d.last_seen ? new Date(d.last_seen).toLocaleString() : 'Never'}</td>
-            <td>${d.last_temp || '--'} °C</td>
-            <td>${d.last_hum || '--'} %</td>
-            <td>${d.last_press || '--'} hPa</td>
-            <td><button class="button button-danger btn-sm" onclick="deleteDevice(${d.id})">Delete</button></td>
+            <td>${d.created_at ? new Date(d.created_at).toLocaleString() : 'Never'}</td>
+            <td>-- °C</td>
+            <td>-- %</td>
+            <td>-- hPa</td>
+            <td><button class="button button-danger btn-sm" onclick="deleteDevice('${d.id}')">Delete</button></td>
           </tr>
         `).join('');
       }
@@ -352,10 +356,11 @@ if (createDeviceForm) {
     const token = localStorage.getItem('token');
 
     try {
-      const response = await fetch('/api/devices', {
+      // 🎯 FIX: လမ်းကြောင်းကို /api/sensor နှင့် Payload ကို device_key သို့ ပြောင်းလဲခြင်း
+      const response = await fetch('/api/sensor', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify({ deviceKey, name })
+        body: JSON.stringify({ device_key: deviceKey, name }) 
       });
       if (!response.ok) { const errData = await response.json(); throw new Error(errData.error || 'Failed to create device'); }
       createDeviceForm.reset();
@@ -378,7 +383,8 @@ window.deleteUser = async (id) => {
 window.deleteDevice = async (id) => {
   if(!confirm("Are you sure to delete this device?")) return;
   const token = localStorage.getItem('token');
-  await fetch(`/api/devices?id=${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
+  // 🎯 FIX: String ID Type (ဥပမာ- 'lift-01') ကိုပါ Delete လုပ်နိုင်ရန် ညွှန်းပေးခြင်း
+  await fetch(`/api/sensor?id=${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
   loadSettingsData();
 };
 
@@ -409,24 +415,15 @@ window.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // (ဂ) Language Selection Box ပြောင်းလဲမှုကို စောင့်ကြည့်ခြင်း (ရှိခဲ့လျှင်)
-  document.getElementById('language-select')?.addEventListener('change', (e) => {
-    const selectedLang = e.target.value;
-    localStorage.setItem('lang', selectedLang);
-    // 💡 ဘာသာစကားပြောင်းလဲမည့် function ရှိပါက ဤနေရာတွင် လှမ်းခေါ်နိုင်သည်
-    // ဥပမာ - changeLanguage(selectedLang);
-  });
-
-  // (ဃ) Login အခြေအနေစစ်ဆေးပြီး Dashboard ပေါ်မပေါ် ဆုံးဖြတ်ခြင်း
+  // (ဂ) Login အခြေအနေစစ်ဆေးပြီး Dashboard ပေါ်မပေါ် ဆုံးဖြတ်ခြင်း
   if (localStorage.getItem('token')) { 
     showDashboard(); 
   } else {
-    // Token မရှိပါက Login Screen ကို ပုံမှန်အတိုင်း ပြထားမည်
     if (loginView) loginView.classList.remove('hidden');
     if (dashboardView) dashboardView.classList.add('hidden');
     if (userActions) userActions.classList.add('hidden');
   }
 
-  // (င) ဒေတာများကို ၅ စက္ကန့်တစ်ခါ real-time refresh စတင်လုပ်ဆောင်ခြင်း
+  // (ဃ) ဒေတာများကို ၅ စက္ကန့်တစ်ခါ real-time refresh စတင်လုပ်ဆောင်ခြင်း
   setInterval(updateDashboardData, 5000); 
 });
