@@ -1,7 +1,7 @@
 const { supabase } = require('./db');
 
 module.exports = async (req, res) => {
-  // CORS Headers သတ်မှတ်ချက်များ (ESP32 နှင့် Frontend နှစ်ခုလုံး လှမ်းခေါ်နိုင်ရန်)
+  // CORS Headers သတ်မှတ်ချက်များ (ESP32 နှင့် Frontend အတွက်)
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
@@ -11,29 +11,47 @@ module.exports = async (req, res) => {
   }
 
   // --------------------------------------------------------
-  // 🎯 🎯 [GET METHOD]: Dashboard UI အတွက် စက်စာရင်း ထုတ်ပေးရန်
+  // 🎯 ၁။ [GET METHOD]: Dashboard UI က ဒေတာအားလုံး လှမ်းတောင်းချိန်
   // --------------------------------------------------------
   if (req.method === 'GET') {
     try {
-      const { data, error } = await supabase
-        .from('devices')
+      // အဆင့် (က) sensor_data ထဲက နောက်ဆုံးရ ဒေတာ ၂၀ ကို အရင်ဆွဲထုတ်ခြင်း
+      const { data: sensorData, error: sensorError } = await supabase
+        .from('sensor_data')
         .select('*')
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .limit(20);
 
-      if (error) {
-        return res.status(500).json({ error: error.message });
+      if (sensorError) {
+        return res.status(500).json({ error: sensorError.message });
       }
-      return res.status(200).json(data || []);
+
+      // 🎯 Frontend ဘက်က JSON Array စစ်စစ် မျှော်လင့်ထားတဲ့အတွက် ရလဒ်ကို တိုက်ရိုက်ပေးပို့ခြင်း
+      return res.status(200).json(sensorData || []);
+      
     } catch (err) {
       return res.status(500).json({ error: err.message });
     }
   }
   
   // --------------------------------------------------------
-  // 🎯 🎯 [POST METHOD]: ESP32 ဆီက ဒေတာလက်ခံပြီး သိမ်းရန်
+  // 🎯 ၂။ [POST METHOD]: ESP32 (သို့) Admin Panel က ဒေတာအသစ် လာသိမ်းချိန်
   // --------------------------------------------------------
   if (req.method === 'POST') {
     try {
+      // Admin Panel က စက်အသစ်ဆောက်တာလား (device_key ပါလာမလား) စစ်ဆေးခြင်း
+      if (req.body.device_key) {
+        const { device_key, name } = req.body;
+        const { data: devData, error: devError } = await supabase
+          .from('devices')
+          .insert([{ id: device_key, device_key, name: name || 'ESP32 Device' }])
+          .select();
+
+        if (devError) return res.status(400).json({ error: devError.message });
+        return res.status(201).json(devData[0]);
+      }
+
+      // ESP32 က လှမ်းပို့သည့် Sensor ဒေတာများကို သိမ်းဆည်းခြင်း
       const { 
         device_id, 
         temperature, 
@@ -49,7 +67,6 @@ module.exports = async (req, res) => {
         return res.status(400).json({ error: "device_id is required" });
       }
 
-      // Supabase table ထဲသို့ ထည့်သွင်းမည့် Object
       const insertData = {
         device_id: device_id, 
         temperature: temperature !== undefined ? parseFloat(temperature) : null,
@@ -58,31 +75,24 @@ module.exports = async (req, res) => {
         accel_y: accel_y !== undefined ? parseFloat(accel_y) : null,
         accel_z: accel_z !== undefined ? parseFloat(accel_z) : null,
         door_status: door_status || 'Unknown'
-        // 🎯 တိုင်ပင်ချက်- created_at ကို ဖယ်ထားပါတယ် (Supabase က အော်တို ထည့်ပေးပါလိမ့်မယ်)
       };
 
       if (pressure !== undefined) {
         insertData.pressure = parseFloat(pressure);
       }
 
-      // Supabase `sensor_data` table ထဲသို့ ထည့်ခြင်း
       const { data, error } = await supabase
         .from('sensor_data')
         .insert([insertData])
         .select();
 
       if (error) {
-        console.error("Supabase Insertion Error:", error.message);
         return res.status(400).json({ error: error.message });
       }
 
-      return res.status(200).json({ 
-        message: 'All multi-sensor data saved successfully!', 
-        data 
-      });
+      return res.status(200).json(data);
 
     } catch (err) {
-      console.error("Server Catch Error:", err.message);
       return res.status(500).json({ error: err.message });
     }
   }
