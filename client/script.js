@@ -171,7 +171,7 @@ function updateDeviceSelectOptions(data) {
   }
 }
 
-// 🎯 ပြင်ဆင်ပြီးသား Dynamic Graph Function
+// 🎯 Dynamic Graph Function
 function updateHistoryChart(deviceId, sensorLogs) {
   const ctx = document.getElementById('history-chart');
   if (!ctx) return;
@@ -179,7 +179,6 @@ function updateHistoryChart(deviceId, sensorLogs) {
   const reversedLogs = [...sensorLogs].slice(0, 20).reverse();
   const labels = reversedLogs.map(log => new Date(log.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
 
-  // အဟောင်းရှိရင် ဖျက်ပြီး အသစ်ပြန်ဆောက်မှ Data Type တွေ မရောမှာဖြစ်လို့ အခုလို Reset လုပ်ရပါတယ်
   if (historyChart) {
     historyChart.destroy();
     historyChart = null;
@@ -188,13 +187,11 @@ function updateHistoryChart(deviceId, sensorLogs) {
   let datasets = [];
 
   if (deviceId === 'lift-01') {
-    // Lift-01 အတွက် Temperature & Humidity Graph
     datasets = [
       { label: 'Temperature (°C)', data: reversedLogs.map(log => log.temperature || null), borderColor: '#ff6384', borderWidth: 2, tension: 0.2 },
       { label: 'Humidity (%)', data: reversedLogs.map(log => log.humidity || null), borderColor: '#36a2eb', borderWidth: 2, tension: 0.2 }
     ];
   } else if (deviceId === 'lift-02') {
-    // Lift-02 အတွက် Vibration (Accel X, Y, Z) Graph
     datasets = [
       { label: 'Accel X', data: reversedLogs.map(log => log.accel_x || 0), borderColor: '#ff6384', borderWidth: 2, tension: 0.2 },
       { label: 'Accel Y', data: reversedLogs.map(log => log.accel_y || 0), borderColor: '#36a2eb', borderWidth: 2, tension: 0.2 },
@@ -210,22 +207,35 @@ function updateHistoryChart(deviceId, sensorLogs) {
 }
 
 // ========================================================
+// 📊 ၃။ DATA EXPORT SYSTEM FUNCTIONS (FIXED DATE FILTER)
 // ========================================================
-// 📊 ၃။ DATA EXPORT SYSTEM FUNCTIONS (FIXED FOR DEVICE FILTER)
-// ========================================================
-function exportToCSV() {
-  if (allSensorData.length === 0) { alert("No data to export!"); return; }
-  
-  // 🎯 Dropdown က ရွေးထားတဲ့ Device ID ကို ယူမယ်
-  const selectedDevice = document.getElementById('device-select')?.value;
-  
-  // ရွေးထားတဲ့ စက်ရှိရင် Filter လုပ်မယ်၊ မရွေးထားရင် အကုန်ထုတ်မယ်
+function getFilteredExportData() {
   let exportData = [...allSensorData];
+  const selectedDevice = document.getElementById('device-select')?.value;
+  const startDateStr = document.getElementById('start-date')?.value;
+  const endDateStr = document.getElementById('end-date')?.value;
+
+  // ၁။ Device ID Filter
   if (selectedDevice) {
     exportData = exportData.filter(item => item.device_id === selectedDevice);
   }
 
-  if (exportData.length === 0) { alert("No data found for the selected device!"); return; }
+  // ၂။ Start Date Filter
+  if (startDateStr) {
+    exportData = exportData.filter(item => new Date(item.created_at).getTime() >= new Date(startDateStr).getTime());
+  }
+
+  // ၃။ End Date Filter
+  if (endDateStr) {
+    exportData = exportData.filter(item => new Date(item.created_at).getTime() <= new Date(endDateStr).getTime());
+  }
+
+  return { exportData, selectedDevice };
+}
+
+function exportToCSV() {
+  const { exportData, selectedDevice } = getFilteredExportData();
+  if (exportData.length === 0) { alert("No data found for the selected criteria!"); return; }
 
   let csvContent = "data:text/csv;charset=utf-8,";
   csvContent += "Timestamp,Device ID,Temperature(C),Humidity(%),Door Status,Accel X,Accel Y,Accel Z\n";
@@ -239,7 +249,6 @@ function exportToCSV() {
   const link = document.createElement("a");
   link.setAttribute("href", encodedUri);
   
-  // File Name မှာလည်း စက်နာမည်ပါအောင် လုပ်ထားပါတယ်
   const fileName = selectedDevice ? `elevator_report_${selectedDevice}_${new Date().toISOString().slice(0,10)}.csv` : `elevator_report_all_${new Date().toISOString().slice(0,10)}.csv`;
   link.setAttribute("download", fileName);
   
@@ -249,20 +258,10 @@ function exportToCSV() {
 }
 
 function exportToJSON() {
-  if (allSensorData.length === 0) { alert("No data to export!"); return; }
-  
-  // 🎯 Dropdown က ရွေးထားတဲ့ Device ID ကို ယူမယ်
-  const selectedDevice = document.getElementById('device-select')?.value;
-  
-  // ရွေးထားတဲ့ စက်ရှိရင် Filter လုပ်မယ်၊ မရွေးထားရင် အကုန်ထုတ်မယ်
-  let exportData = [...allSensorData];
-  if (selectedDevice) {
-    exportData = exportData.filter(item => item.device_id === selectedDevice);
-  }
+  const { exportData, selectedDevice } = getFilteredExportData();
+  if (exportData.length === 0) { alert("No data found for the selected criteria!"); return; }
 
-  if (exportData.length === 0) { alert("No data found for the selected device!"); return; }
-
-  const dataStr = "data:text/json;charset=utf-8 Close," + encodeURIComponent(JSON.stringify(exportData, null, 2));
+  const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(exportData, null, 2));
   const link = document.createElement("a");
   link.setAttribute("href", dataStr);
   
@@ -465,7 +464,6 @@ function applyFiltersAndRender() {
       `;
     }
 
-    // စက် ID အလိုက် Graph သီးသန့်ဆွဲရန် လှမ်းခေါ်ခြင်း
     updateHistoryChart(selectedDevice, filteredData);
   } else {
     resetUIElements();
@@ -490,7 +488,12 @@ function resetUIElements() {
 // 🎯 ၆။ Event Bindings & Initialization
 // ========================================================
 window.addEventListener('DOMContentLoaded', () => {
-  document.getElementById('filter-button')?.addEventListener('click', applyFiltersAndRender);
+  // 🎯 Form Refresh ပိတ်ရန်အတွက် e.preventDefault() ကို ဒီနေရာမှာ သေချာထည့်ထားပါတယ်
+  document.getElementById('filter-button')?.addEventListener('click', (e) => {
+    e.preventDefault(); 
+    applyFiltersAndRender();
+  });
+  
   document.getElementById('device-select')?.addEventListener('change', applyFiltersAndRender);
   document.getElementById('export-csv')?.addEventListener('click', exportToCSV);
   document.getElementById('export-json')?.addEventListener('click', exportToJSON);
@@ -514,7 +517,7 @@ window.addEventListener('DOMContentLoaded', () => {
   } else {
     if (loginView) loginView.classList.remove('hidden');
     if (dashboardView) dashboardView.classList.add('hidden');
-    if (userActions) userActions.classList.add('hidden');
+    if (userActions) userActions.add('hidden');
   }
 
   setInterval(updateDashboardData, 5000); 
