@@ -409,44 +409,47 @@ window.deleteDevice = async (id) => {
 };
 
 // ========================================================
-// 🧼 ၅။ FILTER AND UI RENDER LOGIC (TIMEZONE FIXED)
+// 🧼 ၅။ FILTER AND UI RENDER LOGIC (STRING DATE FILTER)
 // ========================================================
 function applyFiltersAndRender() {
+  // Global variable ထဲက ဒေတာမူရင်းကို ယူသုံးပါတယ်
   let filteredData = [...window.allSensorData];
   const selectedDevice = document.getElementById('device-select')?.value;
 
-  // Lift ကတ်တွေကို အမြဲ နှိပ်လို့ရအောင် Render အရင်လုပ်ပေးထားပါတယ်
+  // Lift ကတ်တွေကို ဘယ်အချိန်မဆို နှိပ်လို့ရအောင် အမြဲ Render အရင်လုပ်ပေးထားပါတယ်
   renderElevatorList(window.allSensorData);
 
+  // ၁။ Device ID ကို အရင် စစ်ထုတ်ပါမယ်
   if (!selectedDevice) {
     resetUIElements();
     return;
   }
-
   filteredData = filteredData.filter(item => item.device_id === selectedDevice);
 
-  // 🎯 Timezone ကွာဟချက်ကို ဖြေရှင်းရန် ရက်စွဲစစ်ထုတ်မှုအပိုင်း
-  const startDateStr = document.getElementById('start-date')?.value; // Format: "YYYY-MM-DD"
-  const endDateStr = document.getElementById('end-date')?.value;     // Format: "YYYY-MM-DD"
+  // ၂။ ရက်စွဲ စစ်ထုတ်မှုအပိုင်း (Timezone အမှားမခံရအောင် String ဖြတ်တောက်နည်း သုံးထားပါတယ်)
+  const startDateStr = document.getElementById('start-date')?.value; // "YYYY-MM-DD"
+  const endDateStr = document.getElementById('end-date')?.value;     // "YYYY-MM-DD"
 
   if (startDateStr && startDateStr.trim() !== "") {
-    // ရွေးချယ်လိုက်တဲ့ ရက်စွဲရဲ့ အစောဆုံးအချိန် (ဥပမာ- 2026-07-10 00:00:00) အဖြစ် သတ်မှတ်ပါတယ်
-    const startDateTime = new Date(startDateStr + 'T00:00:00').getTime();
-    if (!isNaN(startDateTime)) {
-      filteredData = filteredData.filter(item => new Date(item.created_at).getTime() >= startDateTime);
-    }
+    filteredData = filteredData.filter(item => {
+      if (!item.created_at) return false;
+      // "2026-07-10T11:45:00.000Z" ထဲကနေ "2026-07-10" ကိုပဲ ဖြတ်ယူပြီး တိုက်ရိုက် နှိုင်းယှဉ်ပါတယ်
+      const itemDateStr = item.created_at.slice(0, 10); 
+      return itemDateStr >= startDateStr;
+    });
   }
 
   if (endDateStr && endDateStr.trim() !== "") {
-    // ရွေးချယ်လိုက်တဲ့ ရက်စွဲရဲ့ နောက်ဆုံးအချိန် (ဥပမာ- 2026-07-10 23:59:59) အထိ ယူပါတယ်
-    const endDateTime = new Date(endDateStr + 'T23:59:59').getTime();
-    if (!isNaN(endDateTime)) {
-      filteredData = filteredData.filter(item => new Date(item.created_at).getTime() <= endDateTime);
-    }
+    filteredData = filteredData.filter(item => {
+      if (!item.created_at) return false;
+      const itemDateStr = item.created_at.slice(0, 10);
+      return itemDateStr <= endDateStr;
+    });
   }
 
+  // ၃။ UI ပေါ်တွင် ဒေတာများ ထုတ်ပြခြင်း
   if (filteredData.length > 0) {
-    const latest = filteredData[0];
+    const latest = filteredData[0]; // နောက်ဆုံးရဒေတာ
 
     if (document.getElementById('temperature-value')) {
       document.getElementById('temperature-value').innerText = (latest.temperature && latest.temperature > 0) ? latest.temperature.toFixed(1) + " °C" : "-- °C";
@@ -472,12 +475,13 @@ function applyFiltersAndRender() {
       `;
     }
 
+    // Graph ဆွဲပေးရန်
     updateHistoryChart(selectedDevice, filteredData);
   } else {
     resetUIElements();
-    // 🎯 ဒေတာတကယ်မရှိမှသာ အသိပေးစာပြစနစ် (Alert ကြီး ခဏခဏ မတက်အောင် လမ်းကြောင်းလွှဲထားပါတယ်)
+    // စစ်ထုတ်လိုက်တဲ့ ရက်စွဲအတွင်း ဒေတာတကယ် မရှိမှသာ စာသားပြပါမယ်
     if (document.getElementById('other-value')) {
-      document.getElementById('other-value').innerText = "No data found for this period.";
+      document.getElementById('other-value').innerText = "No data found for the selected date range.";
     }
   }
 }
