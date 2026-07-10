@@ -372,19 +372,17 @@ window.deleteDevice = async (id) => {
 };
 
 // ========================================================
-// 🧼 ၅။ FILTER AND UI RENDER LOGIC (ADDED & FIXED THE BUG)
+// 🧼 ၅။ FILTER AND UI RENDER LOGIC (FIXED FOR LIFT-2 GRAPH)
 // ========================================================
 function applyFiltersAndRender() {
   let filteredData = [...allSensorData];
   const selectedDevice = document.getElementById('device-select')?.value;
 
-  // ၁။ Dropdown မှာ ဘာမှမရွေးထားရင် UI ကို Clear လုပ်ပြီး ရပ်ပစ်မယ်
   if (!selectedDevice) {
     resetUIElements();
     return;
   }
 
-  // ၂။ ရွေးထားတဲ့ စက် ID နဲ့ပဲ Filter လုပ်မယ်
   filteredData = filteredData.filter(item => item.device_id === selectedDevice);
 
   // ရက်စွဲ Filters
@@ -397,48 +395,80 @@ function applyFiltersAndRender() {
     filteredData = filteredData.filter(item => new Date(item.created_at).getTime() <= new Date(endDateStr).getTime());
   }
 
-  // ၃။ Filter လုပ်လို့ရလာတဲ့ အနီးစပ်ဆုံး နောက်ဆုံးရ ဒေတာကို UI ပေါ်တင်မယ်
   if (filteredData.length > 0) {
     const latest = filteredData[0];
     
-    // 🎯 [အရေးကြီးဆုံးအပိုင်း] အရင်ဆုံး UI ဒေတာဟောင်းတွေကို Clear အကုန်လုပ်ပစ်မယ်
     resetUIElements();
 
-    // Temperature sensor ပါပြီး တန်ဖိုးရှိမှသာ ပြမယ် (မပါရင် -- °C အတိုင်း ကျန်ခဲ့မယ်)
-    if (document.getElementById('temperature-value') && latest.temperature && latest.temperature > 0) {
-      document.getElementById('temperature-value').innerText = latest.temperature.toFixed(1) + " °C";
+    // Temperature & Humidity
+    if (document.getElementById('temperature-value')) {
+      document.getElementById('temperature-value').innerText = (latest.temperature && latest.temperature > 0) ? latest.temperature.toFixed(1) + " °C" : "-- °C";
+    }
+    if (document.getElementById('humidity-value')) {
+      document.getElementById('humidity-value').innerText = (latest.humidity && latest.humidity > 0) ? latest.humidity.toFixed(1) + " %" : "-- %";
     }
     
-    // Humidity ရှိမှပြမယ်
-    if (document.getElementById('humidity-value') && latest.humidity && latest.humidity > 0) {
-      document.getElementById('humidity-value').innerText = latest.humidity.toFixed(1) + " %";
+    // Vibration (X, Y, Z)
+    if (document.getElementById('vibration-value')) {
+      document.getElementById('vibration-value').innerHTML = `
+        X: <b>${latest.accel_x?.toFixed(2) || '0.00'}</b> | 
+        Y: <b>${latest.accel_y?.toFixed(2) || '0.00'}</b> | 
+        Z: <b>${latest.accel_z?.toFixed(2) || '0.00'}</b> m/s²
+      `;
     }
-    
-    // Pressure ရှိမှပြမယ်
-    if (document.getElementById('pressure-value') && latest.pressure && latest.pressure > 0) {
-      document.getElementById('pressure-value').innerText = latest.pressure.toFixed(1) + " hPa";
-    }
-    
-    if (document.getElementById('other-value')) {
-      document.getElementById('other-value').innerText = latest.device_id ? `Active: ${latest.device_id.toUpperCase()}` : "--";
-    }
-    
+
+    // Door Status
     if (document.getElementById('door-status-value')) {
       document.getElementById('door-status-value').innerText = latest.door_status || "--";
       document.getElementById('door-status-value').style.color = latest.door_status === "Open" ? "#ff6384" : "#4bc0c0";
     }
     
-    if (document.getElementById('vibration-value')) {
-      document.getElementById('vibration-value').innerHTML = `
-        X: <b>${latest.accel_x?.toFixed(2) || '0.00'}</b> m/s² | 
-        Y: <b>${latest.accel_y?.toFixed(2) || '0.00'}</b> m/s² | 
-        Z: <b>${latest.accel_z?.toFixed(2) || '0.00'}</b> m/s²
-      `;
-    }
-
+    // 🔥 ဒီနေရာမှာ Graph ကို အလုပ်လုပ်ခိုင်းမယ်
     updateHistoryChart(filteredData);
   } else {
     resetUIElements();
+  }
+}
+
+// 🔥 ပြင်ဆင်ထားသော Graph Function
+function updateHistoryChart(sensorLogs) {
+  const ctx = document.getElementById('history-chart');
+  if (!ctx) return;
+
+  // နောက်ဆုံး ဒေတာ ၂၀ ကို ယူပြီး အချိန်အလိုက် ပြန်စီခြင်း
+  const reversedLogs = [...sensorLogs].slice(0, 20).reverse();
+  const labels = reversedLogs.map(log => new Date(log.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+
+  // Lift-2 အတွက် Accel X, Y, Z တန်ဖိုးများကို ယူခြင်း
+  const dataX = reversedLogs.map(log => log.accel_x || 0);
+  const dataY = reversedLogs.map(log => log.accel_y || 0);
+  const dataZ = reversedLogs.map(log => log.accel_z || 0);
+
+  if (historyChart) {
+    historyChart.data.labels = labels;
+    // Dataset တွေကို ပုံမှန်အတိုင်း ပြန်သတ်မှတ်
+    historyChart.data.datasets[0].label = 'Accel X';
+    historyChart.data.datasets[0].data = dataX;
+    historyChart.data.datasets[0].borderColor = '#ff6384';
+    
+    historyChart.data.datasets[1].label = 'Accel Y';
+    historyChart.data.datasets[1].data = dataY;
+    historyChart.data.datasets[1].borderColor = '#36a2eb';
+
+    // လိုအပ်ရင် 3rd line ထပ်ထည့်နိုင်ပါတယ်
+    historyChart.update();
+  } else {
+    historyChart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: labels,
+        datasets: [
+          { label: 'Accel X', data: dataX, borderColor: '#ff6384', borderWidth: 2, tension: 0.2 },
+          { label: 'Accel Y', data: dataY, borderColor: '#36a2eb', borderWidth: 2, tension: 0.2 }
+        ]
+      },
+      options: { responsive: true }
+    });
   }
 }
 
