@@ -98,9 +98,12 @@ async function updateDashboardData() {
   try {
     const response = await fetch('/api/get-sensor');
     if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-    allSensorData = await response.json();
+    const rawData = await response.json();
 
-    if (allSensorData && allSensorData.length > 0) {
+    if (rawData && rawData.length > 0) {
+      // 🎯 ပြင်ဆင်ချက်- နောက်ဆုံးပေါ်ဒေတာ အမြဲတမ်း ထိပ်ဆုံးရောက်နေအောင် Sort လုပ်ခြင်း
+      allSensorData = [...rawData].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
       renderElevatorList(allSensorData);
       updateDeviceSelectOptions(allSensorData);
       applyFiltersAndRender();
@@ -164,8 +167,8 @@ function updateDeviceSelectOptions(data) {
     let opt = document.createElement('option');
     opt.value = devKey;
     opt.innerHTML = devKey.toUpperCase();
-    opt.style.color = "#222222";          // Dropdown စာလုံးအရောင် အမည်းပြောင်းခြင်း
-    opt.style.backgroundColor = "#ffffff"; // Dropdown Background အဖြူပြောင်းခြင်း
+    opt.style.color = "#222222";          
+    opt.style.backgroundColor = "#ffffff"; 
     deviceSelect.appendChild(opt);
   });
   if (currentSelected) {
@@ -178,6 +181,7 @@ function updateHistoryChart(deviceId, sensorLogs) {
   const ctx = document.getElementById('history-chart');
   if (!ctx) return;
 
+  // 🎯 Chart ဆွဲဖို့အတွက် အချိန်အစဉ်လိုက် (အဟောင်းကနေ အသစ်) ပြန်စီပေးထားပါတယ်
   const reversedLogs = [...sensorLogs].slice(0, 20).reverse();
   const labels = reversedLogs.map(log => new Date(log.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
 
@@ -188,8 +192,7 @@ function updateHistoryChart(deviceId, sensorLogs) {
 
   let datasets = [];
 
-  // စက် ID အလိုက် Graph သီးသန့်ခွဲဆွဲခြင်း
-  if (deviceId === 'lift-01') {
+  if (deviceId === 'lift-01' || deviceId === 'lift-03') {
     datasets = [
       { label: 'Temperature (°C)', data: reversedLogs.map(log => log.temperature || null), borderColor: '#ff6384', borderWidth: 2, tension: 0.2 },
       { label: 'Humidity (%)', data: reversedLogs.map(log => log.humidity || null), borderColor: '#36a2eb', borderWidth: 2, tension: 0.2 }
@@ -210,7 +213,7 @@ function updateHistoryChart(deviceId, sensorLogs) {
 }
 
 // ========================================================
-// 📊 ၃။ DATA EXPORT SYSTEM FUNCTIONS (FIXED)
+// 📊 ၃။ DATA EXPORT SYSTEM FUNCTIONS
 // ========================================================
 function getFilteredExportData() {
   let exportData = [...allSensorData];
@@ -218,12 +221,10 @@ function getFilteredExportData() {
   const startDateStr = document.getElementById('start-date')?.value;
   const endDateStr = document.getElementById('end-date')?.value;
 
-  // ၁။ Device ID Filter
   if (selectedDevice) {
     exportData = exportData.filter(item => item.device_id === selectedDevice);
   }
 
-  // ၂။ Start Date Filter (စာသားအလွတ်ဖြစ်နေရင် ကျော်သွားမယ်)
   if (startDateStr && startDateStr.trim() !== "") {
     const startTime = new Date(startDateStr).getTime();
     if (!isNaN(startTime)) {
@@ -231,7 +232,6 @@ function getFilteredExportData() {
     }
   }
 
-  // ၃။ End Date Filter (စာသားအလွတ်ဖြစ်နေရင် ကျော်သွားမယ်)
   if (endDateStr && endDateStr.trim() !== "") {
     const endTime = new Date(endDateStr).getTime();
     if (!isNaN(endTime)) {
@@ -446,6 +446,7 @@ function applyFiltersAndRender() {
   }
 
   if (filteredData.length > 0) {
+    // 🎯 ပြင်ဆင်ချက်- Sort လုပ်ထားလို့ Index 0 က အမြဲတမ်း နောက်ဆုံးပေါ် (Latest) ဒေတာအစစ်ဖြစ်နေပါပြီ
     const latest = filteredData[0];
     resetUIElements();
 
@@ -497,14 +498,12 @@ function resetUIElements() {
 // 🎯 ၆။ Event Bindings & Initialization
 // ========================================================
 window.addEventListener('DOMContentLoaded', () => {
-  // 🎯 Dropdown Input စာလုံးအရောင် အမည်းရောင် ပုံသေဖြစ်အောင် စတိုင်ထည့်သွင်းခြင်း
   const deviceSelectEl = document.getElementById('device-select');
   if (deviceSelectEl) {
     deviceSelectEl.style.color = "#222222";
     deviceSelectEl.style.backgroundColor = "#ffffff";
   }
 
-  // 🎯 Apply နှိပ်ရင် Refresh ဖြစ်တာကို တားဆီးရန် e.preventDefault() သေချာထည့်ထားပါတယ်
   document.getElementById('filter-button')?.addEventListener('click', (e) => {
     e.preventDefault(); 
     applyFiltersAndRender();
