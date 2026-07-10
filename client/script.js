@@ -1,5 +1,6 @@
-let allSensorData = []; // Server ကလာသမျှ ဒေတာအားလုံး သိမ်းဆည်းရန်
-let historyChart = null;
+// 🎯 Global Variables ကို Window Object ပေါ်မှာ တိုက်ရိုက်တင်ပြီး သေချာအောင် လုပ်ထားပါတယ်
+window.allSensorData = []; 
+window.historyChart = null;
 
 // DOM Elements 
 const loginView = document.getElementById('login-view');
@@ -67,7 +68,7 @@ function showDashboard() {
   updateDashboardData();
 }
 
-// ⚙️ Navigation: Dashboard -> Settings
+// ⚙️ Navigation
 if (settingsButton) {
   settingsButton.addEventListener('click', () => {
     if (dashboardView) dashboardView.classList.add('hidden');
@@ -76,7 +77,6 @@ if (settingsButton) {
   });
 }
 
-// ⚙️ Navigation: Settings -> Dashboard Back
 if (settingsBackButton) {
   settingsBackButton.addEventListener('click', () => {
     showDashboard();
@@ -101,11 +101,11 @@ async function updateDashboardData() {
     const rawData = await response.json();
 
     if (rawData && rawData.length > 0) {
-      // 🎯 ဒေတာအသစ်ဆုံးတွေကို ထိပ်ဆုံးကနေ အမြဲတမ်း စီပေးထားပါတယ်
-      allSensorData = [...rawData].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+      // 🎯 ဒေတာအသစ်ဆုံးတွေကို ထိပ်ဆုံးကနေ စီပေးထားပါတယ်
+      window.allSensorData = [...rawData].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
-      renderElevatorList(allSensorData);
-      updateDeviceSelectOptions(allSensorData);
+      renderElevatorList(window.allSensorData);
+      updateDeviceSelectOptions(window.allSensorData);
       applyFiltersAndRender();
     }
   } catch (error) {
@@ -176,7 +176,6 @@ function updateDeviceSelectOptions(data) {
   }
 }
 
-// 🎯 Dynamic Graph Function
 function updateHistoryChart(deviceId, sensorLogs) {
   const ctx = document.getElementById('history-chart');
   if (!ctx) return;
@@ -184,9 +183,9 @@ function updateHistoryChart(deviceId, sensorLogs) {
   const reversedLogs = [...sensorLogs].slice(0, 20).reverse();
   const labels = reversedLogs.map(log => new Date(log.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
 
-  if (historyChart) {
-    historyChart.destroy();
-    historyChart = null;
+  if (window.historyChart) {
+    window.historyChart.destroy();
+    window.historyChart = null;
   }
 
   let datasets = [];
@@ -204,7 +203,7 @@ function updateHistoryChart(deviceId, sensorLogs) {
     ];
   }
 
-  historyChart = new Chart(ctx, {
+  window.historyChart = new Chart(ctx, {
     type: 'line',
     data: { labels: labels, datasets: datasets },
     options: { responsive: true }
@@ -212,20 +211,18 @@ function updateHistoryChart(deviceId, sensorLogs) {
 }
 
 // ========================================================
-// 📊 ၃။ DATA EXPORT SYSTEM FUNCTIONS (FIXED)
+// 📊 ၃။ DATA EXPORT SYSTEM FUNCTIONS
 // ========================================================
 function getFilteredExportData() {
-  let exportData = [...allSensorData];
+  let exportData = [...window.allSensorData];
   const selectedDevice = document.getElementById('device-select')?.value;
   const startDateStr = document.getElementById('start-date')?.value;
   const endDateStr = document.getElementById('end-date')?.value;
 
-  // ၁။ Device ID Filter
   if (selectedDevice) {
     exportData = exportData.filter(item => item.device_id === selectedDevice);
   }
 
-  // ၂။ Start Date Filter (စာသားအလွတ်ဖြစ်နေရင် ကျော်သွားမယ်)
   if (startDateStr && startDateStr.trim() !== "") {
     const startTime = new Date(startDateStr).getTime();
     if (!isNaN(startTime)) {
@@ -233,7 +230,6 @@ function getFilteredExportData() {
     }
   }
 
-  // ၃။ End Date Filter (စာသားအလွတ်ဖြစ်နေရင် ကျော်သွားမယ်)
   if (endDateStr && endDateStr.trim() !== "") {
     const endTime = new Date(endDateStr).getTime();
     if (!isNaN(endTime)) {
@@ -268,7 +264,6 @@ function exportToCSV() {
   document.body.removeChild(link);
 }
 
-// JSON Export စနစ်
 function exportToJSON() {
   const { exportData, selectedDevice } = getFilteredExportData();
   if (exportData.length === 0) { alert("No data found for the selected criteria!"); return; }
@@ -414,14 +409,15 @@ window.deleteDevice = async (id) => {
 };
 
 // ========================================================
-// 🧼 ၅။ FILTER AND UI RENDER LOGIC (FIXED)
+// 🧼 ၅။ FILTER AND UI RENDER LOGIC
 // ========================================================
 function applyFiltersAndRender() {
-  let filteredData = [...allSensorData];
+  // 🎯 Error မတက်အောင် Global variable ဖြစ်တဲ့ window.allSensorData ဆီကနေ စိတ်ချလက်ချ ယူပါတယ်
+  let filteredData = [...window.allSensorData];
   const selectedDevice = document.getElementById('device-select')?.value;
 
-  // 🎯 Lift ကတ်တွေ အမြဲရှိနေစေဖို့အတွက် Filter လုပ်တိုင်း ကတ်တွေကို အရင် ပြန် Render လုပ်ပေးရပါမယ်
-  renderElevatorList(allSensorData);
+  // 🎯 Lift ကတ်တွေကို ဘယ်အချိန်မဆို နှိပ်လို့ရအောင် အမြဲ Render အရင်လုပ်ပေးထားပါတယ်
+  renderElevatorList(window.allSensorData);
 
   if (!selectedDevice) {
     resetUIElements();
@@ -469,9 +465,6 @@ function applyFiltersAndRender() {
     updateHistoryChart(selectedDevice, filteredData);
   } else {
     resetUIElements();
-    if (document.getElementById('other-value')) {
-      document.getElementById('other-value').innerText = "No data found for this device/date filter!";
-    }
   }
 }
 
