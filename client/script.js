@@ -1,4 +1,4 @@
-// 🎯 Global Variables ကို Window Object ပေါ်မှာ တိုက်ရိုက်တင်ပြီး သေჩာအောင် လုပ်ထားပါတယ်
+// 🎯 Global Variables ကို Window Object ပေါ်မှာ တိုက်ရိုက်တင်ထားပါတယ်
 window.allSensorData = []; 
 window.historyChart = null;
 
@@ -101,7 +101,6 @@ async function updateDashboardData() {
     const rawData = await response.json();
 
     if (rawData && rawData.length > 0) {
-      // 🎯 ဒေတာအသစ်ဆုံးတွေကို ထိပ်ဆုံးကနေ စီပေးထားပါတယ်
       window.allSensorData = [...rawData].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
       renderElevatorList(window.allSensorData);
       updateDeviceSelectOptions(window.allSensorData);
@@ -180,7 +179,10 @@ function updateHistoryChart(deviceId, sensorLogs) {
   if (!ctx) return;
 
   const reversedLogs = [...sensorLogs].slice(0, 20).reverse();
-  const labels = reversedLogs.map(log => new Date(log.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
+  const labels = reversedLogs.map(log => {
+    return log.created_at ? new Date(log.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '';
+  });
+
   if (window.historyChart) {
     window.historyChart.destroy();
     window.historyChart = null;
@@ -208,36 +210,32 @@ function updateHistoryChart(deviceId, sensorLogs) {
 }
 
 // ========================================================
-// 📊 ၃။ DATA EXPORT SYSTEM FUNCTIONS
+// 📊 ၃။ DATA EXPORT SYSTEM FUNCTIONS (ISO COMPATIBLE)
 // ========================================================
 function getFilteredExportData() {
   let exportData = [...window.allSensorData];
   const selectedDevice = document.getElementById('device-select')?.value;
-  const startDateStr = document.getElementById('start-date')?.value;
-  const endDateStr = document.getElementById('end-date')?.value;
+  const startDateStr = document.getElementById('start-date')?.value; 
+  const endDateStr = document.getElementById('end-date')?.value;     
 
   if (selectedDevice) {
     exportData = exportData.filter(item => item.device_id === selectedDevice);
   }
 
   if (startDateStr && startDateStr.trim() !== "") {
-    const startTime = new Date(startDateStr).getTime();
-    if (!isNaN(startTime)) {
-      exportData = exportData.filter(item => {
-        if (!item.created_at) return false;
-        return new Date(item.created_at).getTime() >= startTime;
-      });
-    }
+    exportData = exportData.filter(item => {
+      if (!item.created_at) return false;
+      const itemLocalISO = new Date(item.created_at).toLocaleString('sv').replace(' ', 'T').slice(0, 16);
+      return itemLocalISO >= startDateStr;
+    });
   }
 
   if (endDateStr && endDateStr.trim() !== "") {
-    const endTime = new Date(endDateStr).getTime();
-    if (!isNaN(endTime)) {
-      exportData = exportData.filter(item => {
-        if (!item.created_at) return false;
-        return new Date(item.created_at).getTime() <= endTime;
-      });
-    }
+    exportData = exportData.filter(item => {
+      if (!item.created_at) return false;
+      const itemLocalISO = new Date(item.created_at).toLocaleString('sv').replace(' ', 'T').slice(0, 16);
+      return itemLocalISO <= endDateStr;
+    });
   }
 
   return { exportData, selectedDevice };
@@ -245,10 +243,7 @@ function getFilteredExportData() {
 
 function exportToCSV() {
   const { exportData, selectedDevice } = getFilteredExportData();
-  if (exportData.length === 0) { 
-    console.log("No data found for CSV export"); 
-    return; 
-  }
+  if (exportData.length === 0) { alert("No data found for the selected criteria!"); return; }
 
   let csvContent = "data:text/csv;charset=utf-8,";
   csvContent += "Timestamp,Device ID,Temperature(C),Humidity(%),Door Status,Accel X,Accel Y,Accel Z\n";
@@ -271,10 +266,7 @@ function exportToCSV() {
 
 function exportToJSON() {
   const { exportData, selectedDevice } = getFilteredExportData();
-  if (exportData.length === 0) { 
-    console.log("No data found for JSON export"); 
-    return;
-  }
+  if (exportData.length === 0) { alert("No data found for the selected criteria!"); return; }
 
   const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(exportData, null, 2));
   const link = document.createElement("a");
@@ -416,7 +408,7 @@ window.deleteDevice = async (id) => {
 };
 
 // ========================================================
-// 🧼 ၅။ FILTER AND UI RENDER LOGIC (DATETIME ISO FIXED)
+// 🧼 ၅။ FILTER AND UI RENDER LOGIC (ISO MATCH FIX)
 // ========================================================
 function applyFiltersAndRender() {
   let filteredData = [...window.allSensorData];
@@ -430,28 +422,23 @@ function applyFiltersAndRender() {
   }
   filteredData = filteredData.filter(item => item.device_id === selectedDevice);
 
-  const startDateStr = document.getElementById('start-date')?.value; // "YYYY-MM-DDTHH:mm"
-  const endDateStr = document.getElementById('end-date')?.value;     // "YYYY-MM-DDTHH:mm"
+  const startDateStr = document.getElementById('start-date')?.value; 
+  const endDateStr = document.getElementById('end-date')?.value;     
 
-  // 🎯 `<input type="datetime-local">` အတွက် တိကျသေချာသော မီလီစက္ကန့် နှိုင်းယှဉ်ချက်စနစ်
   if (startDateStr && startDateStr.trim() !== "") {
-    const startTime = new Date(startDateStr).getTime();
-    if (!isNaN(startTime)) {
-      filteredData = filteredData.filter(item => {
-        if (!item.created_at) return false;
-        return new Date(item.created_at).getTime() >= startTime;
-      });
-    }
+    filteredData = filteredData.filter(item => {
+      if (!item.created_at) return false;
+      const itemLocalISO = new Date(item.created_at).toLocaleString('sv').replace(' ', 'T').slice(0, 16);
+      return itemLocalISO >= startDateStr;
+    });
   }
 
   if (endDateStr && endDateStr.trim() !== "") {
-    const endTime = new Date(endDateStr).getTime();
-    if (!isNaN(endTime)) {
-      filteredData = filteredData.filter(item => {
-        if (!item.created_at) return false;
-        return new Date(item.created_at).getTime() <= endTime;
-      });
-    }
+    filteredData = filteredData.filter(item => {
+      if (!item.created_at) return false;
+      const itemLocalISO = new Date(item.created_at).toLocaleString('sv').replace(' ', 'T').slice(0, 16);
+      return itemLocalISO <= endDateStr;
+    });
   }
 
   if (filteredData.length > 0) {
@@ -504,9 +491,7 @@ function resetUIElements() {
   }
 }
 
-// ========================================================
 // 🎯 ၆။ Event Bindings & Initialization
-// ========================================================
 window.addEventListener('DOMContentLoaded', () => {
   const deviceSelectEl = document.getElementById('device-select');
   if (deviceSelectEl) {
