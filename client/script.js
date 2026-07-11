@@ -25,33 +25,41 @@ const deviceError = document.getElementById('device-error');
 const usersTableBody = document.getElementById('users-table-body');
 const devicesTableBody = document.getElementById('devices-table-body');
 
-// 🛠️ ရက်စွဲသက်သက်ကိုသာ ပိုင်းခြားပြီး Date Object ပြောင်းပေးမည့် စနစ် (Time ကင်းလွတ်ခွင့်)
-function safeParseDateOnly(dateStr) {
+// 🛠️ 1. Start Date အတွက် သုံးရန် (မနက် 00:00:00 သို့ ညှိပေးသည်)
+function parseAsStartOfDay(dateStr) {
   if (!dateStr) return null;
-  
-  // Database က လာသော Format ဖြစ်လျှင် (ဥပမာ - "11/07/2026, 10:45:22")
   if (typeof dateStr === 'string' && dateStr.includes('/')) {
-    const cleanStr = dateStr.split(',')[0].trim(); // "11/07/2026"
+    const cleanStr = dateStr.split(',')[0].trim();
     const parts = cleanStr.split('/');
     if (parts.length === 3) {
-      const day = parseInt(parts[0], 10);
-      const month = parseInt(parts[1], 10) - 1;
-      const year = parseInt(parts[2], 10);
-      return new Date(year, month, day, 0, 0, 0, 0); // နာရီကို 00:00 အဖြစ် သုညညှိသည်
+      return new Date(parseInt(parts[2], 10), parseInt(parts[1], 10) - 1, parseInt(parts[0], 10), 0, 0, 0, 0);
     }
   }
-  
-  // HTML Input (datetime-local / date) က လာသော Format ဖြစ်လျှင် (ဥပမာ - "2026-07-11T11:00")
   const parsed = new Date(dateStr);
   if (!isNaN(parsed.getTime())) {
-    // 🎯 တန်ဖိုးရှိသမျှ နာရီ၊ မိနစ်၊ စက္ကန့် အကုန်လုံးကို ဖယ်ထုတ်ပြီး ရက်စွဲ သက်သက်ပဲ ယူသည်
     return new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate(), 0, 0, 0, 0);
   }
-  
   return null;
 }
 
-// 🛠️ Helper to Safely get Device ID (Null Safe)
+// 🛠️ 2. End Date အတွက် သုံးရန် (ညဉ့်နက် 23:59:59 သို့ ညှိပေးသည်)
+function parseAsEndOfDay(dateStr) {
+  if (!dateStr) return null;
+  if (typeof dateStr === 'string' && dateStr.includes('/')) {
+    const cleanStr = dateStr.split(',')[0].trim();
+    const parts = cleanStr.split('/');
+    if (parts.length === 3) {
+      return new Date(parseInt(parts[2], 10), parseInt(parts[1], 10) - 1, parseInt(parts[0], 10), 23, 59, 59, 999);
+    }
+  }
+  const parsed = new Date(dateStr);
+  if (!isNaN(parsed.getTime())) {
+    return new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate(), 23, 59, 59, 999);
+  }
+  return null;
+}
+
+// 🛠️ Helper to Safely get Device ID (Null Safe Fix)
 function getDevId(item) {
   if (!item) return '';
   return item.device_id || item.ce_id || '';
@@ -133,6 +141,7 @@ async function updateDashboardData() {
     const rawData = await response.json();
 
     if (rawData && rawData.length > 0) {
+      // device_id အမှန်တကယ် ပါဝင်သော ဒေတာများကိုသာ စစ်ထုတ်ယူခြင်း (Null Safe)
       window.allSensorData = rawData
         .filter(item => getDevId(item) !== '')
         .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
@@ -246,7 +255,7 @@ function updateHistoryChart(deviceId, sensorLogs) {
 }
 
 // ========================================================
-// 📊 ၃။ DATA EXPORT SYSTEM FUNCTIONS (DATE-ONLY COMPARE)
+// 📊 ၃။ DATA EXPORT SYSTEM FUNCTIONS
 // ========================================================
 function getFilteredExportData() {
   let exportData = [...window.allSensorData];
@@ -259,21 +268,21 @@ function getFilteredExportData() {
   }
 
   if (startDateStr && startDateStr.trim() !== "") {
-    const startTarget = safeParseDateOnly(startDateStr);
+    const startTarget = parseAsStartOfDay(startDateStr);
     if (startTarget) {
       exportData = exportData.filter(item => {
-        const itemDate = safeParseDateOnly(item.created_at);
-        return itemDate && itemDate.getTime() >= startTarget.getTime();
+        const itemDate = new Date(item.created_at);
+        return !isNaN(itemDate.getTime()) && itemDate.getTime() >= startTarget.getTime();
       });
     }
   }
 
   if (endDateStr && endDateStr.trim() !== "") {
-    const endTarget = safeParseDateOnly(endDateStr);
+    const endTarget = parseAsEndOfDay(endDateStr);
     if (endTarget) {
       exportData = exportData.filter(item => {
-        const itemDate = safeParseDateOnly(item.created_at);
-        return itemDate && itemDate.getTime() <= endTarget.getTime();
+        const itemDate = new Date(item.created_at);
+        return !isNaN(itemDate.getTime()) && itemDate.getTime() <= endTarget.getTime();
       });
     }
   }
@@ -448,7 +457,7 @@ window.deleteDevice = async (id) => {
 };
 
 // ========================================================
-// 🧼 ၅။ FILTER AND UI RENDER LOGIC (PURE DATE BASED COMPARE)
+// 🧼 ၅။ FILTER AND UI RENDER LOGIC
 // ========================================================
 function applyFiltersAndRender() {
   let filteredData = [...window.allSensorData];
@@ -467,24 +476,24 @@ function applyFiltersAndRender() {
   const startDateStr = document.getElementById('start-date')?.value; 
   const endDateStr = document.getElementById('end-date')?.value;
 
-  // 2. UI Filter - Robust Start Date Only Comparison
+  // 2. Start Date Filter (ထက်ကြီး သို့မဟုတ် ညီ)
   if (startDateStr && startDateStr.trim() !== "") {
-    const startTarget = safeParseDateOnly(startDateStr);
+    const startTarget = parseAsStartOfDay(startDateStr);
     if (startTarget) {
       filteredData = filteredData.filter(item => {
-        const itemDate = safeParseDateOnly(item.created_at);
-        return itemDate && itemDate.getTime() >= startTarget.getTime();
+        const itemDate = new Date(item.created_at);
+        return !isNaN(itemDate.getTime()) && itemDate.getTime() >= startTarget.getTime();
       });
     }
   }
 
-  // 3. UI Filter - Robust End Date Only Comparison
+  // 3. End Date Filter (ထက်ငယ် သို့မဟုတ် ညီ - ညဉ့်နက်အထိ စစ်ပေးသည်)
   if (endDateStr && endDateStr.trim() !== "") {
-    const endTarget = safeParseDateOnly(endDateStr);
+    const endTarget = parseAsEndOfDay(endDateStr);
     if (endTarget) {
       filteredData = filteredData.filter(item => {
-        const itemDate = safeParseDateOnly(item.created_at);
-        return itemDate && itemDate.getTime() <= endTarget.getTime();
+        const itemDate = new Date(item.created_at);
+        return !isNaN(itemDate.getTime()) && itemDate.getTime() <= endTarget.getTime();
       });
     }
   }
@@ -575,7 +584,7 @@ window.addEventListener('DOMContentLoaded', () => {
   } else {
     if (loginView) loginView.classList.remove('hidden');
     if (dashboardView) dashboardView.classList.add('hidden');
-    if (userActions) userActions.classList.remove('hidden');
+    if (userActions) userActions.classList.add('hidden');
   }
 
   setInterval(updateDashboardData, 5000); 
