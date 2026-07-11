@@ -25,38 +25,37 @@ const deviceError = document.getElementById('device-error');
 const usersTableBody = document.getElementById('users-table-body');
 const devicesTableBody = document.getElementById('devices-table-body');
 
-// 🛠️ 1. Start Date အတွက် သုံးရန် (မနက် 00:00:00 သို့ ညှိပေးသည်)
-function parseAsStartOfDay(dateStr) {
-  if (!dateStr) return null;
+// 🛠️ Helper: ရက်စွဲစာသား ဘယ်လိုပုံစံပဲလာလာ "YYYY-MM-DD" ပုံစံ စာသားသက်သက်အဖြစ် ပြောင်းလဲပေးသည့်စနစ်
+function formatToDateString(dateStr) {
+  if (!dateStr) return '';
+  
+  // အကယ်၍ Supabase ကလာသော "2026-07-11 04:35:33+00" (ISO format) ဖြစ်လျှင်
+  if (typeof dateStr === 'string' && dateStr.includes('-')) {
+    return dateStr.slice(0, 10); // "2026-07-11" ကို တိုက်ရိုက်ဖြတ်ယူသည် (Timezone အမှားအယွင်း ကင်းဝေးစေရန်)
+  }
+  
+  // အကယ်၍ CSV Export သို့မဟုတ် အခြားနေရာမှ "11/07/2026, 10:45:22" (Slash format) ဖြင့်လာလျှင်
   if (typeof dateStr === 'string' && dateStr.includes('/')) {
-    const cleanStr = dateStr.split(',')[0].trim();
+    const cleanStr = dateStr.split(',')[0].trim(); // "11/07/2026"
     const parts = cleanStr.split('/');
     if (parts.length === 3) {
-      return new Date(parseInt(parts[2], 10), parseInt(parts[1], 10) - 1, parseInt(parts[0], 10), 0, 0, 0, 0);
+      const day = parts[0].padStart(2, '0');
+      const month = parts[1].padStart(2, '0');
+      const year = parts[2];
+      return `${year}-${month}-${day}`; // "2026-07-11" အဖြစ် ပြောင်းလဲပေးသည်
     }
   }
-  const parsed = new Date(dateStr);
-  if (!isNaN(parsed.getTime())) {
-    return new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate(), 0, 0, 0, 0);
-  }
-  return null;
-}
 
-// 🛠️ 2. End Date အတွက် သုံးရန် (ညဉ့်နက် 23:59:59 သို့ ညှိပေးသည်)
-function parseAsEndOfDay(dateStr) {
-  if (!dateStr) return null;
-  if (typeof dateStr === 'string' && dateStr.includes('/')) {
-    const cleanStr = dateStr.split(',')[0].trim();
-    const parts = cleanStr.split('/');
-    if (parts.length === 3) {
-      return new Date(parseInt(parts[2], 10), parseInt(parts[1], 10) - 1, parseInt(parts[0], 10), 23, 59, 59, 999);
-    }
-  }
+  // HTML Input ကလာသော standard "2026-07-11" ဖြစ်လျှင်
   const parsed = new Date(dateStr);
   if (!isNaN(parsed.getTime())) {
-    return new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate(), 23, 59, 59, 999);
+    const yyyy = parsed.getFullYear();
+    const mm = String(parsed.getMonth() + 1).padStart(2, '0');
+    const dd = String(parsed.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
   }
-  return null;
+  
+  return '';
 }
 
 // 🛠️ Helper to Safely get Device ID (Null Safe Fix)
@@ -141,7 +140,7 @@ async function updateDashboardData() {
     const rawData = await response.json();
 
     if (rawData && rawData.length > 0) {
-      // device_id အမှန်တကယ် ပါဝင်သော ဒေတာများကိုသာ စစ်ထုတ်ယူခြင်း (Null Safe)
+      // NULL မဟုတ်ဘဲ device_id အမှန်တကယ် ပါဝင်သော ဒေတာများကိုသာ စစ်ထုတ်ယူခြင်း
       window.allSensorData = rawData
         .filter(item => getDevId(item) !== '')
         .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
@@ -255,7 +254,7 @@ function updateHistoryChart(deviceId, sensorLogs) {
 }
 
 // ========================================================
-// 📊 ၃။ DATA EXPORT SYSTEM FUNCTIONS
+// 📊 ၃။ DATA EXPORT SYSTEM FUNCTIONS (STRICT COMPUTE FIX)
 // ========================================================
 function getFilteredExportData() {
   let exportData = [...window.allSensorData];
@@ -267,24 +266,21 @@ function getFilteredExportData() {
     exportData = exportData.filter(item => getDevId(item) === selectedDevice);
   }
 
-  if (startDateStr && startDateStr.trim() !== "") {
-    const startTarget = parseAsStartOfDay(startDateStr);
-    if (startTarget) {
-      exportData = exportData.filter(item => {
-        const itemDate = new Date(item.created_at);
-        return !isNaN(itemDate.getTime()) && itemDate.getTime() >= startTarget.getTime();
-      });
-    }
+  const formattedStart = formatToDateString(startDateStr);
+  const formattedEnd = formatToDateString(endDateStr);
+
+  if (formattedStart) {
+    exportData = exportData.filter(item => {
+      const itemDateStr = formatToDateString(item.created_at);
+      return itemDateStr && itemDateStr >= formattedStart;
+    });
   }
 
-  if (endDateStr && endDateStr.trim() !== "") {
-    const endTarget = parseAsEndOfDay(endDateStr);
-    if (endTarget) {
-      exportData = exportData.filter(item => {
-        const itemDate = new Date(item.created_at);
-        return !isNaN(itemDate.getTime()) && itemDate.getTime() <= endTarget.getTime();
-      });
-    }
+  if (formattedEnd) {
+    exportData = exportData.filter(item => {
+      const itemDateStr = formatToDateString(item.created_at);
+      return itemDateStr && itemDateStr <= formattedEnd;
+    });
   }
 
   return { exportData, selectedDevice };
@@ -457,7 +453,7 @@ window.deleteDevice = async (id) => {
 };
 
 // ========================================================
-// 🧼 ၅။ FILTER AND UI RENDER LOGIC
+// 🧼 ၅။ FILTER AND UI RENDER LOGIC (PURE STRING COMPUTE)
 // ========================================================
 function applyFiltersAndRender() {
   let filteredData = [...window.allSensorData];
@@ -476,26 +472,23 @@ function applyFiltersAndRender() {
   const startDateStr = document.getElementById('start-date')?.value; 
   const endDateStr = document.getElementById('end-date')?.value;
 
-  // 2. Start Date Filter (ထက်ကြီး သို့မဟုတ် ညီ)
-  if (startDateStr && startDateStr.trim() !== "") {
-    const startTarget = parseAsStartOfDay(startDateStr);
-    if (startTarget) {
-      filteredData = filteredData.filter(item => {
-        const itemDate = new Date(item.created_at);
-        return !isNaN(itemDate.getTime()) && itemDate.getTime() >= startTarget.getTime();
-      });
-    }
+  const formattedStart = formatToDateString(startDateStr);
+  const formattedEnd = formatToDateString(endDateStr);
+
+  // 2. UI Filter - String Based Start Date Comparison
+  if (formattedStart) {
+    filteredData = filteredData.filter(item => {
+      const itemDateStr = formatToDateString(item.created_at);
+      return itemDateStr && itemDateStr >= formattedStart;
+    });
   }
 
-  // 3. End Date Filter (ထက်ငယ် သို့မဟုတ် ညီ - ညဉ့်နက်အထိ စစ်ပေးသည်)
-  if (endDateStr && endDateStr.trim() !== "") {
-    const endTarget = parseAsEndOfDay(endDateStr);
-    if (endTarget) {
-      filteredData = filteredData.filter(item => {
-        const itemDate = new Date(item.created_at);
-        return !isNaN(itemDate.getTime()) && itemDate.getTime() <= endTarget.getTime();
-      });
-    }
+  // 3. UI Filter - String Based End Date Comparison
+  if (formattedEnd) {
+    filteredData = filteredData.filter(item => {
+      const itemDateStr = formatToDateString(item.created_at);
+      return itemDateStr && itemDateStr <= formattedEnd;
+    });
   }
 
   if (filteredData.length > 0) {
