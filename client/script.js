@@ -220,68 +220,89 @@ function updateHistoryChart(deviceId, sensorLogs) {
 }
 
 // ========================================================
-// 📊 ၃။ DATA EXPORT SYSTEM FUNCTIONS (PERIOD DATE FIX)
+// 📊 ၃။ DATA EXPORT SYSTEM FUNCTIONS (SUPABASE DIRECT FETCH)
 // ========================================================
-function getFilteredExportData() {
-  let exportData = [...window.allSensorData];
-  const selectedDevice = document.getElementById('device-select')?.value;
-  const startDateStr = document.getElementById('start-date')?.value; 
-  const endDateStr = document.getElementById('end-date')?.value;
+async function exportToCSV() {
+  const selectedDevice = document.getElementById('device-select')?.value || '';
+  const startDate = document.getElementById('start-date')?.value || '';
+  const endDate = document.getElementById('end-date')?.value || '';
 
-  if (selectedDevice) {
-    exportData = exportData.filter(item => getDevId(item) === selectedDevice);
+  if (!startDate || !endDate) {
+    alert("ကျေးဇူးပြု၍ ဘယ်နေ့ကနေ ဘယ်နေ့အထိ ထုတ်ချင်လဲဆိုတာ Start Date နှင့် End Date အရင်ရွေးပေးပါခင်ဗျာ။");
+    return;
   }
 
-  if (startDateStr) {
-    const startTime = new Date(startDateStr).getTime();
-    exportData = exportData.filter(item => new Date(item.created_at).getTime() >= startTime);
-  }
+  try {
+    let url = `/api/get-sensor?deviceId=${selectedDevice}&startDate=${startDate}&endDate=${endDate}`;
+    const response = await fetch(url);
+    if (!response.ok) throw new Error('Supabase မှ ဒေတာဆွဲယူ၍မရပါ');
+    const exportData = await response.json();
 
-  if (endDateStr) {
-    // End Date ရဲ့ နောက်ဆုံးစက္ကန့် (23:59:59.999) အထိ ကြားထဲက ရက်အားလုံးအကျုံးဝင်စေရန် ရက်တစ်ရက်စာ ပေါင်းထည့်သည်
-    const endTime = new Date(endDateStr).getTime() + 86399999;
-    exportData = exportData.filter(item => new Date(item.created_at).getTime() <= endTime);
-  }
+    if (!exportData || exportData.length === 0) {
+      alert("ရွေးချယ်ထားသော ရက်စွဲအတွင်း မည်သည့် Data မှ မရှိပါရှင်။");
+      return;
+    }
 
-  return { exportData, selectedDevice };
+    let csvContent = "data:text/csv;charset=utf-8,";
+    csvContent += "Timestamp,Device ID,Temperature(C),Humidity(%),Door Status,Accel X,Accel Y,Accel Z\n";
+    
+    // ဒေတာအဟောင်းကနေ အသစ်ကို အစဥ်လိုက်ထွက်လာစေရန် reverse() လုပ်ပေးထားပါသည်
+    exportData.reverse().forEach(row => {
+      let time = new Date(row.created_at).toLocaleString();
+      csvContent += `"${time}","${getDevId(row)}",${row.temperature || 0},${row.humidity || 0},"${row.door_status || ''}",${row.accel_x || 0},${row.accel_y || 0},${row.accel_z || 0}\n`;
+    });
+
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    
+    const fileName = selectedDevice ? `Supabase_Report_${selectedDevice}_${startDate}_to_${endDate}.csv` : `Supabase_Report_All_${startDate}_to_${endDate}.csv`;
+    link.setAttribute("download", fileName);
+    
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  } catch (error) {
+    console.error("Export CSV Error:", error);
+    alert("ဒေတာထုတ်ယူရာတွင် အမှားအယွင်းရှိနေပါသည်- " + error.message);
+  }
 }
 
-function exportToCSV() {
-  const { exportData, selectedDevice } = getFilteredExportData();
-  if (exportData.length === 0) { alert("No data found for the selected criteria!"); return; }
+async function exportToJSON() {
+  const selectedDevice = document.getElementById('device-select')?.value || '';
+  const startDate = document.getElementById('start-date')?.value || '';
+  const endDate = document.getElementById('end-date')?.value || '';
 
-  let csvContent = "data:text/csv;charset=utf-8,";
-  csvContent += "Timestamp,Device ID,Temperature(C),Humidity(%),Door Status,Accel X,Accel Y,Accel Z\n";
-  
-  exportData.forEach(row => {
-    let time = new Date(row.created_at).toLocaleString();
-    csvContent += `"${time}","${getDevId(row)}",${row.temperature},${row.humidity},"${row.door_status || ''}",${row.accel_x || 0},${row.accel_y || 0},${row.accel_z || 0}\n`;
-  });
-  const encodedUri = encodeURI(csvContent);
-  const link = document.createElement("a");
-  link.setAttribute("href", encodedUri);
-  
-  const fileName = selectedDevice ? `elevator_report_${selectedDevice}_${new Date().toISOString().slice(0,10)}.csv` : `elevator_report_all_${new Date().toISOString().slice(0,10)}.csv`;
-  link.setAttribute("download", fileName);
-  
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-}
+  if (!startDate || !endDate) {
+    alert("ကျေးဇူးပြု၍ Start Date နှင့် End Date အရင်ရွေးပေးပါခင်ဗျာ။");
+    return;
+  }
 
-function exportToJSON() {
-  const { exportData, selectedDevice } = getFilteredExportData();
-  if (exportData.length === 0) { alert("No data found for the selected criteria!"); return; }
+  try {
+    let url = `/api/get-sensor?deviceId=${selectedDevice}&startDate=${startDate}&endDate=${endDate}`;
+    const response = await fetch(url);
+    if (!response.ok) throw new Error('Supabase မှ ဒေတာဆွဲယူ၍မရပါ');
+    const exportData = await response.json();
 
-  const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(exportData, null, 2));
-  const link = document.createElement("a");
-  link.setAttribute("href", dataStr);
-  const fileName = selectedDevice ? `elevator_report_${selectedDevice}_${new Date().toISOString().slice(0,10)}.json` : `elevator_report_all_${new Date().toISOString().slice(0,10)}.json`;
-  link.setAttribute("download", fileName);
-  
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
+    if (!exportData || exportData.length === 0) {
+      alert("ရွေးချယ်ထားသော ရက်စွဲအတွင်း မည်သည့် Data မှ မရှိပါရှင်။");
+      return;
+    }
+
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(exportData, null, 2));
+    const link = document.createElement("a");
+    link.setAttribute("href", dataStr);
+    
+    const fileName = selectedDevice ? `Supabase_Report_${selectedDevice}_${startDate}_to_${endDate}.json` : `Supabase_Report_All_${startDate}_to_${endDate}.json`;
+    link.setAttribute("download", fileName);
+    
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  } catch (error) {
+    console.error("Export JSON Error:", error);
+    alert("ဒေတာထုတ်ယူရာတွင် အမှားအယွင်းရှိနေပါသည်- " + error.message);
+  }
 }
 
 // ========================================================
@@ -413,7 +434,7 @@ window.deleteDevice = async (id) => {
 };
 
 // ========================================================
-// 🧼 ၅။ FILTER AND UI RENDER LOGIC (PERIOD DATE FIX)
+// 🧼 ၅။ FILTER AND UI RENDER LOGIC (LOCAL DATE COMPONENT)
 // ========================================================
 function applyFiltersAndRender() {
   let filteredData = [...window.allSensorData];
@@ -432,14 +453,17 @@ function applyFiltersAndRender() {
   const endDateStr = document.getElementById('end-date')?.value;
 
   if (startDateStr) {
-    const startTime = new Date(startDateStr).getTime();
-    filteredData = filteredData.filter(item => new Date(item.created_at).getTime() >= startTime);
+    filteredData = filteredData.filter(item => {
+      const itemDateStr = new Date(item.created_at).toISOString().split('T')[0];
+      return itemDateStr >= startDateStr;
+    });
   }
 
   if (endDateStr) {
-    // End Date ရဲ့ နောက်ဆုံးစက္ကန့် (23:59:59.999) အထိ ကြားထဲက ရက်အားလုံးအကျုံးဝင်စေရန် ရက်တစ်ရက်စာ ပေါင်းထည့်သည်
-    const endTime = new Date(endDateStr).getTime() + 86399999;
-    filteredData = filteredData.filter(item => new Date(item.created_at).getTime() <= endTime);
+    filteredData = filteredData.filter(item => {
+      const itemDateStr = new Date(item.created_at).toISOString().split('T')[0];
+      return itemDateStr <= endDateStr;
+    });
   }
 
   if (filteredData.length > 0) {
