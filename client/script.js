@@ -2,7 +2,7 @@
 window.allSensorData = []; 
 window.historyChart = null;
 
-// DOM Elements
+// DOM Elements 
 const loginView = document.getElementById('login-view');
 const dashboardView = document.getElementById('dashboard-view');
 const settingsView = document.getElementById('settings-view');
@@ -179,10 +179,7 @@ function updateHistoryChart(deviceId, sensorLogs) {
   if (!ctx) return;
 
   const reversedLogs = [...sensorLogs].slice(0, 20).reverse();
-  const labels = reversedLogs.map(log => {
-    return log.created_at ? new Date(log.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '';
-  });
-
+  const labels = reversedLogs.map(log => new Date(log.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
   if (window.historyChart) {
     window.historyChart.destroy();
     window.historyChart = null;
@@ -210,33 +207,35 @@ function updateHistoryChart(deviceId, sensorLogs) {
 }
 
 // ========================================================
-// 📊 ၃။ DATA EXPORT SYSTEM FUNCTIONS (DIRECTIONS FIXED)
+// 📊 ၃။ DATA EXPORT SYSTEM FUNCTIONS (SAFE DATE STRIP)
 // ========================================================
 function getFilteredExportData() {
   let exportData = [...window.allSensorData];
   const selectedDevice = document.getElementById('device-select')?.value;
-  const startDateStr = document.getElementById('start-date')?.value; // "YYYY-MM-DD"
-  const endDateStr = document.getElementById('end-date')?.value;     // "YYYY-MM-DD"
+  let startDateStr = document.getElementById('start-date')?.value; 
+  let endDateStr = document.getElementById('end-date')?.value;
 
   if (selectedDevice) {
     exportData = exportData.filter(item => item.device_id === selectedDevice);
   }
 
-  // Start Date ( >= ဖြစ်ရမည် - သေချာပြင်ထားပါတယ်)
+  // 🎯 Start Date ကို ပုံစံတူ "YYYY-MM-DD" ဖြစ်အောင် slice ဖြတ်ပြီး နှိုင်းယှဉ်ပါတယ်
   if (startDateStr && startDateStr.trim() !== "") {
+    const formattedStart = startDateStr.slice(0, 10); 
     exportData = exportData.filter(item => {
       if (!item.created_at) return false;
-      const itemDateStr = item.created_at.slice(0, 10);
-      return itemDateStr >= startDateStr;
+      const itemDateStr = item.created_at.slice(0, 10); 
+      return itemDateStr >= formattedStart;
     });
   }
 
-  // End Date ( <= ဖြစ်ရမည် - သေချာပြင်ထားပါတယ်)
+  // 🎯 End Date ကို ပုံစံတူ "YYYY-MM-DD" ဖြစ်အောင် slice ဖြတ်ပြီး နှိုင်းယှဉ်ပါတယ်
   if (endDateStr && endDateStr.trim() !== "") {
+    const formattedEnd = endDateStr.slice(0, 10);
     exportData = exportData.filter(item => {
       if (!item.created_at) return false;
       const itemDateStr = item.created_at.slice(0, 10);
-      return itemDateStr <= endDateStr;
+      return itemDateStr <= formattedEnd;
     });
   }
 
@@ -410,7 +409,7 @@ window.deleteDevice = async (id) => {
 };
 
 // ========================================================
-// 🧼 ၅။ FILTER AND UI RENDER LOGIC (DIRECTIONS FIXED)
+// 🧼 ၅။ FILTER AND UI RENDER LOGIC (FIXED FOR ALL INPUT FORMATS)
 // ========================================================
 function applyFiltersAndRender() {
   let filteredData = [...window.allSensorData];
@@ -424,24 +423,26 @@ function applyFiltersAndRender() {
   }
   filteredData = filteredData.filter(item => item.device_id === selectedDevice);
 
-  const startDateStr = document.getElementById('start-date')?.value; // "YYYY-MM-DD"
-  const endDateStr = document.getElementById('end-date')?.value;     // "YYYY-MM-DD"
+  let startDateStr = document.getElementById('start-date')?.value; 
+  let endDateStr = document.getElementById('end-date')?.value;
 
-  // Start Date Filter ( >= ပြင်ဆင်ပြီး)
+  // 🎯 UI Filter - Start Date အမှားအယွင်းမရှိ စစ်ထုတ်ခြင်း
   if (startDateStr && startDateStr.trim() !== "") {
+    const formattedStart = startDateStr.slice(0, 10); // input က ဘာပဲလာလာ ရှေ့ဆုံး "YYYY-MM-DD" ကိုပဲ ဖြတ်ယူတယ်
     filteredData = filteredData.filter(item => {
       if (!item.created_at) return false;
-      const itemDateStr = item.created_at.slice(0, 10);
-      return itemDateStr >= startDateStr;
+      const itemDateStr = item.created_at.slice(0, 10); 
+      return itemDateStr >= formattedStart;
     });
   }
 
-  // End Date Filter ( <= ပြင်ဆင်ပြီး)
+  // 🎯 UI Filter - End Date အမှားအယွင်းမရှိ စစ်ထုတ်ခြင်း
   if (endDateStr && endDateStr.trim() !== "") {
+    const formattedEnd = endDateStr.slice(0, 10); // input က ဘာပဲလာလာ ရှေ့ဆုံး "YYYY-MM-DD" ကိုပဲ ဖြတ်ယူတယ်
     filteredData = filteredData.filter(item => {
       if (!item.created_at) return false;
       const itemDateStr = item.created_at.slice(0, 10);
-      return itemDateStr <= endDateStr;
+      return itemDateStr <= formattedEnd;
     });
   }
 
