@@ -13,11 +13,9 @@ const userActions = document.getElementById('user-actions');
 const usernameLabel = document.getElementById('username-label');
 const logoutButton = document.getElementById('logout-button');
 
-// Settings Navigation Buttons
 const settingsButton = document.getElementById('settings-button');
 const settingsBackButton = document.getElementById('settings-back-button');
 
-// Forms & Tables Elements
 const createUserForm = document.getElementById('create-user-form');
 const createDeviceForm = document.getElementById('create-device-form');
 const settingsError = document.getElementById('settings-error');
@@ -25,53 +23,10 @@ const deviceError = document.getElementById('device-error');
 const usersTableBody = document.getElementById('users-table-body');
 const devicesTableBody = document.getElementById('devices-table-body');
 
-// 🛠️ Helper to Safely get Device ID (Null Safe Fix)
+// 🛠️ Helper to Safely get Device ID
 function getDevId(item) {
   if (!item) return '';
   return item.device_id || item.ce_id || '';
-}
-
-// 🔐 ၁။ Handle Login System
-if (loginForm) {
-  loginForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const username = document.getElementById('username').value.trim();
-    const password = document.getElementById('password').value;
-    try {
-      const response = await fetch('/api/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password })
-      });
-      if (!response.ok) throw new Error('Login failed');
-   
-      const data = await response.json();
-      localStorage.setItem('token', data.token);
-      localStorage.setItem('username', data.username);
-      localStorage.setItem('role', data.role || 'user'); 
-      showDashboard();
-    } catch (err) {
-      if (loginError) { 
-        loginError.textContent = err.message; 
-        loginError.classList.remove('hidden'); 
-      }
-    }
-  });
-}
-
-function showDashboard() {
-  if (loginView) loginView.classList.add('hidden');
-  if (settingsView) settingsView.classList.add('hidden');
-  if (dashboardView) dashboardView.classList.remove('hidden');
-  if (userActions) userActions.classList.remove('hidden');
-  if (usernameLabel) usernameLabel.textContent = `Hello, ${localStorage.getItem('username')}`;
-  
-  const userRole = localStorage.getItem('role');
-  if (settingsButton && (userRole === 'admin' || userRole === 'manager')) {
-    settingsButton.classList.remove('hidden');
-  }
-
-  updateDashboardData();
 }
 
 // ⚙️ Navigation
@@ -89,15 +44,8 @@ if (settingsBackButton) {
   });
 }
 
-if (logoutButton) {
-  logoutButton.addEventListener('click', () => {
-    localStorage.clear();
-    window.location.reload();
-  });
-}
-
 // ========================================================
-// 🚀 ၂။ REAL-TIME MULTI-ESP LIFT LIST & REFRESH LOGIC
+// 🚀 REAL-TIME MULTI-ESP LIFT LIST & REFRESH LOGIC
 // ========================================================
 async function updateDashboardData() {
   if (dashboardView && dashboardView.classList.contains('hidden')) return;
@@ -220,221 +168,7 @@ function updateHistoryChart(deviceId, sensorLogs) {
 }
 
 // ========================================================
-// 📊 ၃။ DATA EXPORT SYSTEM FUNCTIONS (SUPABASE DIRECT FETCH)
-// ========================================================
-async function exportToCSV() {
-  const selectedDevice = document.getElementById('device-select')?.value || '';
-  const startDate = document.getElementById('start-date')?.value || '';
-  const endDate = document.getElementById('end-date')?.value || '';
-
-  if (!startDate || !endDate) {
-    alert("ကျေးဇူးပြု၍ ဘယ်နေ့ကနေ ဘယ်နေ့အထိ ထုတ်ချင်လဲဆိုတာ Start Date နှင့် End Date အရင်ရွေးပေးပါခင်ဗျာ။");
-    return;
-  }
-
-  try {
-    let url = `/api/get-sensor?deviceId=${selectedDevice}&startDate=${startDate}&endDate=${endDate}`;
-    const response = await fetch(url);
-    if (!response.ok) throw new Error('Supabase မှ ဒေတာဆွဲယူ၍မရပါ');
-    const exportData = await response.json();
-
-    if (!exportData || exportData.length === 0) {
-      alert("ရွေးချယ်ထားသော ရက်စွဲအတွင်း မည်သည့် Data မှ မရှိပါရှင်။");
-      return;
-    }
-
-    let csvContent = "data:text/csv;charset=utf-8,";
-    csvContent += "Timestamp,Device ID,Temperature(C),Humidity(%),Door Status,Accel X,Accel Y,Accel Z\n";
-    
-    // ဒေတာအဟောင်းကနေ အသစ်ကို အစဥ်လိုက်ထွက်လာစေရန် reverse() လုပ်ပေးထားပါသည်
-    exportData.reverse().forEach(row => {
-      let time = new Date(row.created_at).toLocaleString();
-      csvContent += `"${time}","${getDevId(row)}",${row.temperature || 0},${row.humidity || 0},"${row.door_status || ''}",${row.accel_x || 0},${row.accel_y || 0},${row.accel_z || 0}\n`;
-    });
-
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    
-    const fileName = selectedDevice ? `Supabase_Report_${selectedDevice}_${startDate}_to_${endDate}.csv` : `Supabase_Report_All_${startDate}_to_${endDate}.csv`;
-    link.setAttribute("download", fileName);
-    
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  } catch (error) {
-    console.error("Export CSV Error:", error);
-    alert("ဒေတာထုတ်ယူရာတွင် အမှားအယွင်းရှိနေပါသည်- " + error.message);
-  }
-}
-
-async function exportToJSON() {
-  const selectedDevice = document.getElementById('device-select')?.value || '';
-  const startDate = document.getElementById('start-date')?.value || '';
-  const endDate = document.getElementById('end-date')?.value || '';
-
-  if (!startDate || !endDate) {
-    alert("ကျေးဇူးပြု၍ Start Date နှင့် End Date အရင်ရွေးပေးပါခင်ဗျာ။");
-    return;
-  }
-
-  try {
-    let url = `/api/get-sensor?deviceId=${selectedDevice}&startDate=${startDate}&endDate=${endDate}`;
-    const response = await fetch(url);
-    if (!response.ok) throw new Error('Supabase မှ ဒေတာဆွဲယူ၍မရပါ');
-    const exportData = await response.json();
-
-    if (!exportData || exportData.length === 0) {
-      alert("ရွေးချယ်ထားသော ရက်စွဲအတွင်း မည်သည့် Data မှ မရှိပါရှင်။");
-      return;
-    }
-
-    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(exportData, null, 2));
-    const link = document.createElement("a");
-    link.setAttribute("href", dataStr);
-    
-    const fileName = selectedDevice ? `Supabase_Report_${selectedDevice}_${startDate}_to_${endDate}.json` : `Supabase_Report_All_${startDate}_to_${endDate}.json`;
-    link.setAttribute("download", fileName);
-    
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  } catch (error) {
-    console.error("Export JSON Error:", error);
-    alert("ဒေတာထုတ်ယူရာတွင် အမှားအယွင်းရှိနေပါသည်- " + error.message);
-  }
-}
-
-// ========================================================
-// ⚙️ ၄။ ADMIN SETTINGS - USER & DEVICE MANAGEMENT
-// ========================================================
-async function loadSettingsData() {
-  const token = localStorage.getItem('token');
-  try {
-    const resUsers = await fetch('/api/users', { headers: { 'Authorization': `Bearer ${token}` } });
-    if (resUsers.ok) {
-      const users = await resUsers.json();
-      if(usersTableBody) {
-        usersTableBody.innerHTML = users.map(u => `
-          <tr>
-            <td>${u.id}</td>
-            <td><b>${u.username}</b></td>
-            <td><span class="badge badge-${u.role}">${u.role}</span></td>
-            <td>
-              <button class="button button-danger btn-sm" style="color: #ffffff; background-color: #dc3545;" onclick="deleteUser(${u.id})">
-                Delete
-              </button>
-            </td>
-          </tr>
-        `).join('');
-      }
-    }
-  } catch (err) { console.error("Error loading users:", err); }
-
-  try {
-    const resLogs = await fetch('/api/get-sensor');
-    let activeDeviceIds = [];
-    if (resLogs.ok) {
-      const logs = await resLogs.json();
-      const fiveMinutesAgo = Date.now() - (5 * 60 * 1000);
-      activeDeviceIds = logs
-        .filter(log => new Date(log.created_at).getTime() > fiveMinutesAgo)
-        .map(log => getDevId(log));
-    }
-
-    const resDevices = await fetch('/api/devices', { headers: { 'Authorization': `Bearer ${token}` } });
-    if (resDevices.ok) {
-      const devices = await resDevices.json();
-      if(devicesTableBody) {
-        devicesTableBody.innerHTML = devices.map(d => {
-          const isOnline = activeDeviceIds.includes(d.device_key || d.id);
-          const statusBadge = isOnline 
-            ? `<span class="badge" style="background-color: #28a745; color: white; padding: 4px 8px; border-radius: 4px;">Online</span>`
-            : `<span class="badge" style="background-color: #6c757d; color: white; padding: 4px 8px; border-radius: 4px;">Offline</span>`;
-
-          return `
-            <tr>
-              <td>${d.id}</td>
-              <td><code>${d.device_key || d.id}</code></td>
-              <td>${d.name || 'Unnamed Sensor'}</td>
-              <td>${d.created_at ? new Date(d.created_at).toLocaleString() : 'Never'}</td>
-              <td>${statusBadge}</td>
-              <td>
-                <button class="button button-danger btn-sm" style="color: #ffffff; background-color: #dc3545;" onclick="deleteDevice('${d.id}')">
-                  Delete
-                </button>
-              </td>
-            </tr>
-          `;
-        }).join('');
-      }
-    }
-  } catch (err) { console.error("Error loading devices:", err); }
-}
-
-if (createUserForm) {
-  createUserForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const username = document.getElementById('new-username').value.trim();
-    const password = document.getElementById('new-password').value;
-    const role = document.getElementById('new-role').value;
-    const token = localStorage.getItem('token');
-
-    try {
-      const response = await fetch('/api/users', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify({ username, password, role })
-      });
-      if (!response.ok) { const errData = await response.json(); throw new Error(errData.error || 'Failed to create user'); }
-      createUserForm.reset();
-      if (settingsError) { settingsError.textContent = "Account created successfully!"; settingsError.style.color = "green"; settingsError.classList.remove('hidden'); }
-      loadSettingsData();
-    } catch (err) {
-      if (settingsError) { settingsError.textContent = err.message; settingsError.style.color = "red"; settingsError.classList.remove('hidden'); }
-    }
-  });
-}
-
-if (createDeviceForm) {
-  createDeviceForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const deviceKey = document.getElementById('new-device-key').value.trim();
-    const name = document.getElementById('new-device-name').value.trim();
-    const token = localStorage.getItem('token');
-
-    try {
-      const response = await fetch('/api/devices', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify({ deviceKey, name })
-      });
-      if (!response.ok) { const errData = await response.json(); throw new Error(errData.error || 'Failed to create device'); }
-      createDeviceForm.reset();
-      if (deviceError) { deviceError.textContent = "Device registered successfully!"; deviceError.style.color = "green"; deviceError.classList.remove('hidden'); }
-      loadSettingsData();
-    } catch (err) {
-      if (deviceError) { deviceError.textContent = err.message; deviceError.style.color = "red"; deviceError.classList.remove('hidden'); }
-    }
-  });
-}
-
-window.deleteUser = async (id) => {
-  if(!confirm("Are you sure to delete this user account?")) return;
-  const token = localStorage.getItem('token');
-  await fetch(`/api/users?id=${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
-  loadSettingsData();
-};
-
-window.deleteDevice = async (id) => {
-  if(!confirm("Are you sure to delete this device?")) return;
-  const token = localStorage.getItem('token');
-  await fetch(`/api/devices?id=${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
-  loadSettingsData();
-};
-
-// ========================================================
-// 🧼 ၅။ FILTER AND UI RENDER LOGIC (LOCAL DATE COMPONENT)
+// 🧼 FILTER AND UI RENDER LOGIC (LOCAL DATE COMPONENT)
 // ========================================================
 function applyFiltersAndRender() {
   let filteredData = [...window.allSensorData];
@@ -516,7 +250,7 @@ function resetUIElements() {
   }
 }
 
-// 🎯 ၆။ Event Bindings & Initialization
+// 🎯 Event Bindings & Initialization
 window.addEventListener('DOMContentLoaded', () => {
   const deviceSelectEl = document.getElementById('device-select');
   if (deviceSelectEl) {
