@@ -2,10 +2,6 @@
 window.allSensorData = []; 
 window.historyChart = null;
 
-// DOM Elements 
-const dashboardView = document.getElementById('dashboard-view');
-const settingsView = document.getElementById('settings-view');
-const settingsButton = document.getElementById('settings-button');
 const settingsBackButton = document.getElementById('settings-back-button');
 
 // 🛠️ Helper to Safely get Device ID
@@ -14,11 +10,11 @@ function getDevId(item) {
   return item.device_id || item.ce_id || '';
 }
 
-// ⚙️ Navigation
-if (settingsButton) {
-  settingsButton.addEventListener('click', () => {
-    if (dashboardView) dashboardView.classList.add('hidden');
-    if (settingsView) settingsView.classList.remove('hidden');
+// ⚙️ Navigation Setup
+if (window.settingsButton) {
+  window.settingsButton.addEventListener('click', () => {
+    if (window.dashboardView) window.dashboardView.classList.add('hidden');
+    if (window.settingsView) window.settingsView.classList.remove('hidden');
     if (typeof window.loadSettingsData === 'function') {
       window.loadSettingsData(); 
     }
@@ -37,7 +33,7 @@ if (settingsBackButton) {
 // 🚀 REAL-TIME MULTI-ESP LIFT LIST & REFRESH LOGIC
 // ========================================================
 window.updateDashboardData = async function() {
-  if (dashboardView && dashboardView.classList.contains('hidden')) return;
+  if (window.dashboardView && window.dashboardView.classList.contains('hidden')) return;
   try {
     const response = await fetch('/api/get-sensor');
     if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
@@ -157,7 +153,7 @@ function updateHistoryChart(deviceId, sensorLogs) {
 }
 
 // ========================================================
-// 🧼 FILTER AND UI RENDER LOGIC (LOCAL DATE COMPONENT)
+// 🧼 FILTER AND UI RENDER LOGIC
 // ========================================================
 function applyFiltersAndRender() {
   let filteredData = [...window.allSensorData];
@@ -241,6 +237,11 @@ function resetUIElements() {
 
 // 🎯 Event Bindings & Initialization
 window.addEventListener('DOMContentLoaded', () => {
+  // Init Settings form events safely
+  if (typeof window.initSettingsEvents === 'function') {
+    window.initSettingsEvents();
+  }
+
   const deviceSelectEl = document.getElementById('device-select');
   if (deviceSelectEl) {
     deviceSelectEl.style.color = "#222222";
@@ -278,11 +279,9 @@ window.addEventListener('DOMContentLoaded', () => {
   if (localStorage.getItem('token')) { 
     if (typeof window.showDashboard === 'function') window.showDashboard();
   } else {
-    const loginView = document.getElementById('login-view');
-    const userActions = document.getElementById('user-actions');
-    if (loginView) loginView.classList.remove('hidden');
-    if (dashboardView) dashboardView.classList.add('hidden');
-    if (userActions) userActions.classList.add('hidden');
+    if (window.loginView) window.loginView.classList.remove('hidden');
+    if (window.dashboardView) window.dashboardView.classList.add('hidden');
+    if (window.userActions) window.userActions.classList.add('hidden');
   }
 
   setInterval(window.updateDashboardData, 5000); 
