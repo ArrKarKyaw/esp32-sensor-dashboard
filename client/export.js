@@ -1,6 +1,4 @@
 // 📊 DATA EXPORT SYSTEM FUNCTIONS (SUPABASE DIRECT FETCH)
-
-// ⚠️ မူရင်း async function exportToCSV() နေရာတွင် အခုလို ပြောင်းပါ
 window.exportToCSV = async function() {
   const selectedDevice = document.getElementById('device-select')?.value || '';
   const startDate = document.getElementById('start-date')?.value || '';
@@ -14,7 +12,7 @@ window.exportToCSV = async function() {
   try {
     let url = `/api/get-sensor?deviceId=${selectedDevice}&startDate=${startDate}&endDate=${endDate}`;
     const response = await fetch(url);
-    if (!response.ok) throw new Error('Supabase မှ ดေတာဆွဲယူ၍မရပါ');
+    if (!response.ok) throw new Error('Supabase မှ ဒေတာဆွဲယူ၍မရပါ');
     const exportData = await response.json();
 
     if (!exportData || exportData.length === 0) {
@@ -27,7 +25,8 @@ window.exportToCSV = async function() {
     
     exportData.reverse().forEach(row => {
       let time = new Date(row.created_at).toLocaleString();
-      csvContent += `"${time}","${getDevId(row)}",${row.temperature || 0},${row.humidity || 0},"${row.door_status || ''}",${row.accel_x || 0},${row.accel_y || 0},${row.accel_z || 0}\n`;
+      let devId = row.device_id || row.ce_id || '';
+      csvContent += `"${time}","${devId}",${row.temperature || 0},${row.humidity || 0},"${row.door_status || ''}",${row.accel_x || 0},${row.accel_y || 0},${row.accel_z || 0}\n`;
     });
 
     const encodedUri = encodeURI(csvContent);
@@ -46,7 +45,6 @@ window.exportToCSV = async function() {
   }
 }
 
-// ⚠️ မူရင်း async function exportToJSON() နေရာတွင်လည်း အခုလို ပြောင်းပါ
 window.exportToJSON = async function() {
   const selectedDevice = document.getElementById('device-select')?.value || '';
   const startDate = document.getElementById('start-date')?.value || '';

@@ -1,5 +1,13 @@
+// ⚙️ DOM Elements Re-binding for Settings Module
+const createUserForm = document.getElementById('create-user-form');
+const createDeviceForm = document.getElementById('create-device-form');
+const settingsError = document.getElementById('settings-error');
+const deviceError = document.getElementById('device-error');
+const usersTableBody = document.getElementById('users-table-body');
+const devicesTableBody = document.getElementById('devices-table-body');
+
 // ⚙️ ADMIN SETTINGS - USER & DEVICE MANAGEMENT
-async function loadSettingsData() {
+window.loadSettingsData = async function() {
   const token = localStorage.getItem('token');
   try {
     const resUsers = await fetch('/api/users', { headers: { 'Authorization': `Bearer ${token}` } });
@@ -30,7 +38,7 @@ async function loadSettingsData() {
       const fiveMinutesAgo = Date.now() - (5 * 60 * 1000);
       activeDeviceIds = logs
         .filter(log => new Date(log.created_at).getTime() > fiveMinutesAgo)
-        .map(log => getDevId(log));
+        .map(log => log.device_id || log.ce_id || '');
     }
 
     const resDevices = await fetch('/api/devices', { headers: { 'Authorization': `Bearer ${token}` } });
@@ -80,7 +88,7 @@ if (createUserForm) {
       if (!response.ok) { const errData = await response.json(); throw new Error(errData.error || 'Failed to create user'); }
       createUserForm.reset();
       if (settingsError) { settingsError.textContent = "Account created successfully!"; settingsError.style.color = "green"; settingsError.classList.remove('hidden'); }
-      loadSettingsData();
+      window.loadSettingsData();
     } catch (err) {
       if (settingsError) { settingsError.textContent = err.message; settingsError.style.color = "red"; settingsError.classList.remove('hidden'); }
     }
@@ -103,7 +111,7 @@ if (createDeviceForm) {
       if (!response.ok) { const errData = await response.json(); throw new Error(errData.error || 'Failed to create device'); }
       createDeviceForm.reset();
       if (deviceError) { deviceError.textContent = "Device registered successfully!"; deviceError.style.color = "green"; deviceError.classList.remove('hidden'); }
-      loadSettingsData();
+      window.loadSettingsData();
     } catch (err) {
       if (deviceError) { deviceError.textContent = err.message; deviceError.style.color = "red"; deviceError.classList.remove('hidden'); }
     }
@@ -114,12 +122,12 @@ window.deleteUser = async (id) => {
   if(!confirm("Are you sure to delete this user account?")) return;
   const token = localStorage.getItem('token');
   await fetch(`/api/users?id=${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
-  loadSettingsData();
+  window.loadSettingsData();
 };
 
 window.deleteDevice = async (id) => {
   if(!confirm("Are you sure to delete this device?")) return;
   const token = localStorage.getItem('token');
   await fetch(`/api/devices?id=${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
-  loadSettingsData();
+  window.loadSettingsData();
 };

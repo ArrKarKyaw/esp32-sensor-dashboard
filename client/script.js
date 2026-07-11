@@ -3,25 +3,10 @@ window.allSensorData = [];
 window.historyChart = null;
 
 // DOM Elements 
-const loginView = document.getElementById('login-view');
 const dashboardView = document.getElementById('dashboard-view');
 const settingsView = document.getElementById('settings-view');
-
-const loginForm = document.getElementById('login-form');
-const loginError = document.getElementById('login-error');
-const userActions = document.getElementById('user-actions');
-const usernameLabel = document.getElementById('username-label');
-const logoutButton = document.getElementById('logout-button');
-
 const settingsButton = document.getElementById('settings-button');
 const settingsBackButton = document.getElementById('settings-back-button');
-
-const createUserForm = document.getElementById('create-user-form');
-const createDeviceForm = document.getElementById('create-device-form');
-const settingsError = document.getElementById('settings-error');
-const deviceError = document.getElementById('device-error');
-const usersTableBody = document.getElementById('users-table-body');
-const devicesTableBody = document.getElementById('devices-table-body');
 
 // 🛠️ Helper to Safely get Device ID
 function getDevId(item) {
@@ -34,20 +19,24 @@ if (settingsButton) {
   settingsButton.addEventListener('click', () => {
     if (dashboardView) dashboardView.classList.add('hidden');
     if (settingsView) settingsView.classList.remove('hidden');
-    loadSettingsData(); 
+    if (typeof window.loadSettingsData === 'function') {
+      window.loadSettingsData(); 
+    }
   });
 }
 
 if (settingsBackButton) {
   settingsBackButton.addEventListener('click', () => {
-    showDashboard();
+    if (typeof window.showDashboard === 'function') {
+      window.showDashboard();
+    }
   });
 }
 
 // ========================================================
 // 🚀 REAL-TIME MULTI-ESP LIFT LIST & REFRESH LOGIC
 // ========================================================
-async function updateDashboardData() {
+window.updateDashboardData = async function() {
   if (dashboardView && dashboardView.classList.contains('hidden')) return;
   try {
     const response = await fetch('/api/get-sensor');
@@ -264,8 +253,13 @@ window.addEventListener('DOMContentLoaded', () => {
   });
   
   document.getElementById('device-select')?.addEventListener('change', applyFiltersAndRender);
-  document.getElementById('export-csv')?.addEventListener('click', exportToCSV);
-  document.getElementById('export-json')?.addEventListener('click', exportToJSON);
+  
+  document.getElementById('export-csv')?.addEventListener('click', () => {
+    if (typeof window.exportToCSV === 'function') window.exportToCSV();
+  });
+  document.getElementById('export-json')?.addEventListener('click', () => {
+    if (typeof window.exportToJSON === 'function') window.exportToJSON();
+  });
 
   const themeToggleBtn = document.getElementById('theme-toggle');
   if (themeToggleBtn) {
@@ -282,12 +276,14 @@ window.addEventListener('DOMContentLoaded', () => {
   }
 
   if (localStorage.getItem('token')) { 
-    showDashboard();
+    if (typeof window.showDashboard === 'function') window.showDashboard();
   } else {
+    const loginView = document.getElementById('login-view');
+    const userActions = document.getElementById('user-actions');
     if (loginView) loginView.classList.remove('hidden');
     if (dashboardView) dashboardView.classList.add('hidden');
     if (userActions) userActions.classList.add('hidden');
   }
 
-  setInterval(updateDashboardData, 5000); 
+  setInterval(window.updateDashboardData, 5000); 
 });
