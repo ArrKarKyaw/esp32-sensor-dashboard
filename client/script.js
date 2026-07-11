@@ -220,7 +220,7 @@ function updateHistoryChart(deviceId, sensorLogs) {
 }
 
 // ========================================================
-// 📊 ၃။ DATA EXPORT SYSTEM FUNCTIONS (FIXED WITH TIMESTAMP)
+// 📊 ၃။ DATA EXPORT SYSTEM FUNCTIONS (PERIOD DATE FIX)
 // ========================================================
 function getFilteredExportData() {
   let exportData = [...window.allSensorData];
@@ -238,7 +238,8 @@ function getFilteredExportData() {
   }
 
   if (endDateStr) {
-    const endTime = new Date(endDateStr).getTime();
+    // End Date ရဲ့ နောက်ဆုံးစက္ကန့် (23:59:59.999) အထိ ကြားထဲက ရက်အားလုံးအကျုံးဝင်စေရန် ရက်တစ်ရက်စာ ပေါင်းထည့်သည်
+    const endTime = new Date(endDateStr).getTime() + 86399999;
     exportData = exportData.filter(item => new Date(item.created_at).getTime() <= endTime);
   }
 
@@ -412,7 +413,7 @@ window.deleteDevice = async (id) => {
 };
 
 // ========================================================
-// 🧼 ၅။ FILTER AND UI RENDER LOGIC (FIXED WITH TIMESTAMP)
+// 🧼 ၅။ FILTER AND UI RENDER LOGIC (PERIOD DATE FIX)
 // ========================================================
 function applyFiltersAndRender() {
   let filteredData = [...window.allSensorData];
@@ -436,7 +437,8 @@ function applyFiltersAndRender() {
   }
 
   if (endDateStr) {
-    const endTime = new Date(endDateStr).getTime();
+    // End Date ရဲ့ နောက်ဆုံးစက္ကန့် (23:59:59.999) အထိ ကြားထဲက ရက်အားလုံးအကျုံးဝင်စေရန် ရက်တစ်ရက်စာ ပေါင်းထည့်သည်
+    const endTime = new Date(endDateStr).getTime() + 86399999;
     filteredData = filteredData.filter(item => new Date(item.created_at).getTime() <= endTime);
   }
 
