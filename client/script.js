@@ -409,7 +409,7 @@ window.deleteDevice = async (id) => {
 };
 
 // ========================================================
-// 🧼 ၅။ FILTER AND UI RENDER LOGIC (STRING DATE FILTER)
+// 🧼 ၅။ FILTER AND UI RENDER LOGIC (DATETIME-LOCAL FIXED)
 // ========================================================
 function applyFiltersAndRender() {
   // Global variable ထဲက ဒေတာမူရင်းကို ယူသုံးပါတယ်
@@ -426,25 +426,28 @@ function applyFiltersAndRender() {
   }
   filteredData = filteredData.filter(item => item.device_id === selectedDevice);
 
-  // ၂။ ရက်စွဲ စစ်ထုတ်မှုအပိုင်း (Timezone အမှားမခံရအောင် String ဖြတ်တောက်နည်း သုံးထားပါတယ်)
-  const startDateStr = document.getElementById('start-date')?.value; // "YYYY-MM-DD"
-  const endDateStr = document.getElementById('end-date')?.value;     // "YYYY-MM-DD"
+  // ၂။ ရက်စွဲ + အချိန် စစ်ထုတ်မှုအပိုင်း (datetime-local format အတွက် စိတ်ချရအောင် အချိန်ပြောင်းနှိုင်းယှဉ်နည်း သုံးပါတယ်)
+  const startDateStr = document.getElementById('start-date')?.value; // "YYYY-MM-DDTHH:mm"
+  const endDateStr = document.getElementById('end-date')?.value;     // "YYYY-MM-DDTHH:mm"
 
   if (startDateStr && startDateStr.trim() !== "") {
-    filteredData = filteredData.filter(item => {
-      if (!item.created_at) return false;
-      // "2026-07-10T11:45:00.000Z" ထဲကနေ "2026-07-10" ကိုပဲ ဖြတ်ယူပြီး တိုက်ရိုက် နှိုင်းယှဉ်ပါတယ်
-      const itemDateStr = item.created_at.slice(0, 10); 
-      return itemDateStr >= startDateStr;
-    });
+    const startTime = new Date(startDateStr).getTime();
+    if (!isNaN(startTime)) {
+      filteredData = filteredData.filter(item => {
+        if (!item.created_at) return false;
+        return new Date(item.created_at).getTime() >= startTime;
+      });
+    }
   }
 
   if (endDateStr && endDateStr.trim() !== "") {
-    filteredData = filteredData.filter(item => {
-      if (!item.created_at) return false;
-      const itemDateStr = item.created_at.slice(0, 10);
-      return itemDateStr <= endDateStr;
-    });
+    const endTime = new Date(endDateStr).getTime();
+    if (!isNaN(endTime)) {
+      filteredData = filteredData.filter(item => {
+        if (!item.created_at) return false;
+        return new Date(item.created_at).getTime() <= endTime;
+      });
+    }
   }
 
   // ၃။ UI ပေါ်တွင် ဒေတာများ ထုတ်ပြခြင်း
@@ -479,7 +482,7 @@ function applyFiltersAndRender() {
     updateHistoryChart(selectedDevice, filteredData);
   } else {
     resetUIElements();
-    // စစ်ထုတ်လိုက်တဲ့ ရက်စွဲအတွင်း ဒေတာတကယ် မရှိမှသာ စာသားပြပါမယ်
+    // စစ်ထုတ်လိုက်တဲ့ အချိန်အတွင်း ဒေတာတကယ် မရှိမှသာ စာသားပြပါမယ် (Alert မသုံးတော့ဘဲ စာသားပဲ ပြောင်းပေးထားပါတယ်)
     if (document.getElementById('other-value')) {
       document.getElementById('other-value').innerText = "No data found for the selected date range.";
     }
