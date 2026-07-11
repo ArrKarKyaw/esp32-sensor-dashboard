@@ -2,6 +2,60 @@
 window.allSensorData = []; 
 window.historyChart = null;
 
+// 🌐 5-Language JSON Dictionary System
+const languages = {
+  EN: {
+    title: "Elevator Information Dashboard",
+    activeLifts: "Active Elevators Status (Multi-ESP32 Nodes)",
+    temp: "Temperature",
+    hum: "Humidity",
+    press: "Pressure",
+    door: "Door Status",
+    settingsBtn: "Settings",
+    logoutBtn: "Logout"
+  },
+  MY: {
+    title: "ဓာတ်လှေကား အချက်အလက် ဒက်ရှ်ဘုတ်",
+    activeLifts: "လက်ရှိအလုပ်လုပ်နေသော ဓာတ်လှေကားများ (Multi-ESP32 Nodes)",
+    temp: "အပူချိန်",
+    hum: "စိုထိုင်းဆ",
+    press: "လေဖိအား",
+    door: "တံခါး အခြေအနေ",
+    settingsBtn: "ပြင်ဆင်ချက်များ",
+    logoutBtn: "ထွက်ရန်"
+  },
+  TH: {
+    title: "แดชบอร์ดข้อมูลลิฟต์",
+    activeLifts: "สถานะลิฟต์ที่ใช้งานอยู่ (Multi-ESP32 Nodes)",
+    temp: "อุณหภูมิ",
+    hum: "ความชื้น",
+    press: "ความดันอากาศ",
+    door: "สถานะประตู",
+    settingsBtn: "ตั้งค่า",
+    logoutBtn: "ออกจากระบบ"
+  },
+  ZH: {
+    title: "电梯信息仪表盘",
+    activeLifts: "运行中的电梯状态 (Multi-ESP32 Nodes)",
+    temp: "温度",
+    hum: "湿度",
+    press: "气压",
+    door: "车门状态",
+    settingsBtn: "设置",
+    logoutBtn: "登出"
+  },
+  VI: {
+    title: "Bảng Điều Khiển Thông Tin Thang Máy",
+    activeLifts: "Trạng Thái Thang Máy Đang Hoạt Động (Multi-ESP32 Nodes)",
+    temp: "Nhiệt độ",
+    hum: "Độ ẩm",
+    press: "Áp suất",
+    door: "Trạng thái cửa",
+    settingsBtn: "Cài đặt",
+    logoutBtn: "Đăng xuất"
+  }
+};
+
 // 🛠️ Helper to Safely get Device ID
 function getDevId(item) {
   if (!item) return '';
@@ -216,18 +270,16 @@ function resetUIElements() {
 
 // 🎯 Event Bindings & Initialization (DOM Fully Loaded Safe Zone)
 window.addEventListener('DOMContentLoaded', () => {
-  // 1. Global View Mapping (သေချာအောင် DOM ဖွင့်ပြီးမှ ထပ်ဆွဲယူပါသည်)
   window.settingsButton = document.getElementById('settings-button');
   window.settingsBackButton = document.getElementById('settings-back-button');
   window.dashboardView = document.getElementById('dashboard-view');
   window.settingsView = document.getElementById('settings-view');
 
-  // Admin Settings Forms တွေရဲ့ logic တွေကို init လုပ်ခြင်း
   if (typeof window.initSettingsEvents === 'function') {
     window.initSettingsEvents();
   }
 
-  // ⚙️ Navigation Setup (Settings ခလုတ် နှိပ်လျှင် Settings ပွင့်ရန်)
+  // ⚙️ Navigation Setup
   if (window.settingsButton) {
     window.settingsButton.addEventListener('click', () => {
       if (window.dashboardView) window.dashboardView.classList.add('hidden');
@@ -238,7 +290,6 @@ window.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Settings ထဲက Back ခလုတ်နှိပ်ရင် Dashboard ပြန်သွားရန်
   if (window.settingsBackButton) {
     window.settingsBackButton.addEventListener('click', () => {
       if (typeof window.showDashboard === 'function') {
@@ -247,14 +298,12 @@ window.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Device Select Dropdown Design Style Fix
   const deviceSelectEl = document.getElementById('device-select');
   if (deviceSelectEl) {
     deviceSelectEl.style.color = "#222222";
     deviceSelectEl.style.backgroundColor = "#ffffff";
   }
 
-  // Filter Button Event Click Handle
   document.getElementById('filter-button')?.addEventListener('click', (e) => {
     e.preventDefault(); 
     applyFiltersAndRender();
@@ -262,7 +311,6 @@ window.addEventListener('DOMContentLoaded', () => {
   
   document.getElementById('device-select')?.addEventListener('change', applyFiltersAndRender);
   
-  // Data Exports Click Listeners
   document.getElementById('export-csv')?.addEventListener('click', () => {
     if (typeof window.exportToCSV === 'function') window.exportToCSV();
   });
@@ -270,7 +318,7 @@ window.addEventListener('DOMContentLoaded', () => {
     if (typeof window.exportToJSON === 'function') window.exportToJSON();
   });
 
-  // 🌓 Theme Toggle (Dark / Light)
+  // 🌓 Theme Toggle
   const themeToggleBtn = document.getElementById('theme-toggle');
   if (themeToggleBtn) {
     themeToggleBtn.addEventListener('click', () => {
@@ -285,46 +333,49 @@ window.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // 🌐 Language Toggle Setup (Dropdown Change System)
-  const langSelect = document.getElementById('lang-select') || document.querySelector('select');
+  // 🌐 JSON-Based Language Toggle Logic
+  const langSelect = document.getElementById('lang-select') || document.querySelector('select:not([id="device-select"])');
   if (langSelect) {
     langSelect.addEventListener('change', (e) => {
-      const selectedLang = e.target.value;
+      const code = e.target.value; // EN, MY, TH, ZH, VI
+      const dict = languages[code];
+      if (!dict) return;
+
+      // 1. Dashboard Title & Sub-headers
       const titleEl = document.querySelector('h1') || document.querySelector('.title');
+      if (titleEl) titleEl.textContent = dict.title;
       
       let liftHeaderEl = null;
       document.querySelectorAll('h1, h2, h3, h4, div').forEach(el => {
-        if (el.textContent.includes('Active Elevators') || el.textContent.includes('လက်ရှိအလုပ်လုပ်နေသော')) {
+        if (el.textContent.includes('Active Elevators') || el.textContent.includes('လက်ရှိအလုပ်လုပ်နေသော') || el.textContent.includes('สถานะลิฟต์') || el.textContent.includes('运行中的') || el.textContent.includes('Trạng Thái')) {
           liftHeaderEl = el;
         }
       });
+      if (liftHeaderEl) liftHeaderEl.textContent = dict.activeLifts;
 
-      if (selectedLang === 'MY') {
-        if (titleEl) titleEl.textContent = 'ဓာတ်လှေကား အချက်အလက် ဒက်ရှ်ဘုတ်';
-        if (liftHeaderEl) liftHeaderEl.textContent = 'လက်ရှိအလုပ်လုပ်နေသော ဓာတ်လှေကားများ (Multi-ESP32 Nodes)';
-        
-        document.querySelectorAll('div, label, th, button').forEach(el => {
-          if (el.textContent.trim() === 'Temperature') el.innerText = 'အပူချိန်';
-          if (el.textContent.trim() === 'Humidity') el.innerText = 'စိုထိုင်းဆ';
-          if (el.textContent.trim() === 'Pressure') el.innerText = 'လေဖိအား';
-          if (el.textContent.trim() === 'Door Status') el.innerText = 'တံခါး အခြေအနေ';
-        });
-      } else if (selectedLang === 'EN') {
-        if (titleEl) titleEl.textContent = 'Elevator Information Dashboard';
-        if (liftHeaderEl) liftHeaderEl.textContent = 'Active Elevators Status (Multi-ESP32 Nodes)';
-        
-        document.querySelectorAll('div, label, th, button').forEach(el => {
-          if (el.textContent.trim() === 'အပူချိန်') el.innerText = 'Temperature';
-          if (el.textContent.trim() === 'စိုထိုင်းဆ') el.innerText = 'Humidity';
-          if (el.textContent.trim() === 'လေဖိအား') el.innerText = 'Pressure';
-          if (el.textContent.trim() === 'တံခါး အခြေအနေ') el.innerText = 'Door Status';
-        });
-      }
+      // 2. Main Navigation Buttons
+      if (window.settingsButton) window.settingsButton.textContent = dict.settingsBtn;
+      const logoutBtn = document.getElementById('logout-button');
+      if (logoutBtn) logoutBtn.textContent = dict.logoutBtn;
+
+      // 3. Status Grid Labels Text Matching
+      document.querySelectorAll('div, label, th, button').forEach(el => {
+        if (el.childNodes.length > 0) {
+          const text = el.childNodes[0].textContent.trim();
+          if (['Temperature', 'အပူချိန်', 'อุณหภูมิ', '温度', 'Nhiệt độ'].includes(text)) el.childNodes[0].textContent = dict.temp;
+          if (['Humidity', 'စိုထိုင်းဆ', 'ความชื้น', '湿度', 'Độ ẩm'].includes(text)) el.childNodes[0].textContent = dict.hum;
+          if (['Pressure', 'လေဖိအား', 'ความดันอากาศ', '气压', 'Áp suất'].includes(text)) el.childNodes[0].textContent = dict.press;
+          if (['Door Status', 'တံခါး အခြေအနေ', 'สถานะประตู', '车门状态', 'Trạng thái cửa'].includes(text)) el.childNodes[0].textContent = dict.door;
+        }
+      });
+
+      // 📢 Broadcast Event to settings.js & auth.js
+      window.dispatchEvent(new CustomEvent('languageChanged', { detail: { lang: code } }));
     });
   }
 
   // Auth & Initial Load Handling
-  if (localStorage.getItem('token')) { 
+if (localStorage.getItem('token')) { 
     if (typeof window.showDashboard === 'function') window.showDashboard();
   } else {
     if (window.loginView) window.loginView.classList.remove('hidden');
