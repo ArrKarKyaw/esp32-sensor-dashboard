@@ -25,39 +25,6 @@ const deviceError = document.getElementById('device-error');
 const usersTableBody = document.getElementById('users-table-body');
 const devicesTableBody = document.getElementById('devices-table-body');
 
-// 🛠️ Helper: ရက်စွဲစာသား ဘယ်လိုပုံစံပဲလာလာ "YYYY-MM-DD" ပုံစံ စာသားသက်သက်အဖြစ် ပြောင်းလဲပေးသည့်စနစ်
-function formatToDateString(dateStr) {
-  if (!dateStr) return '';
-  
-  // အကယ်၍ Supabase ကလာသော "2026-07-11 04:35:33+00" (ISO format) ဖြစ်လျှင်
-  if (typeof dateStr === 'string' && dateStr.includes('-')) {
-    return dateStr.slice(0, 10); // "2026-07-11" ကို တိုက်ရိုက်ဖြတ်ယူသည် (Timezone အမှားအယွင်း ကင်းဝေးစေရန်)
-  }
-  
-  // အကယ်၍ CSV Export သို့မဟုတ် အခြားနေရာမှ "11/07/2026, 10:45:22" (Slash format) ဖြင့်လာလျှင်
-  if (typeof dateStr === 'string' && dateStr.includes('/')) {
-    const cleanStr = dateStr.split(',')[0].trim(); // "11/07/2026"
-    const parts = cleanStr.split('/');
-    if (parts.length === 3) {
-      const day = parts[0].padStart(2, '0');
-      const month = parts[1].padStart(2, '0');
-      const year = parts[2];
-      return `${year}-${month}-${day}`; // "2026-07-11" အဖြစ် ပြောင်းလဲပေးသည်
-    }
-  }
-
-  // HTML Input ကလာသော standard "2026-07-11" ဖြစ်လျှင်
-  const parsed = new Date(dateStr);
-  if (!isNaN(parsed.getTime())) {
-    const yyyy = parsed.getFullYear();
-    const mm = String(parsed.getMonth() + 1).padStart(2, '0');
-    const dd = String(parsed.getDate()).padStart(2, '0');
-    return `${yyyy}-${mm}-${dd}`;
-  }
-  
-  return '';
-}
-
 // 🛠️ Helper to Safely get Device ID (Null Safe Fix)
 function getDevId(item) {
   if (!item) return '';
@@ -140,7 +107,6 @@ async function updateDashboardData() {
     const rawData = await response.json();
 
     if (rawData && rawData.length > 0) {
-      // NULL မဟုတ်ဘဲ device_id အမှန်တကယ် ပါဝင်သော ဒေတာများကိုသာ စစ်ထုတ်ယူခြင်း
       window.allSensorData = rawData
         .filter(item => getDevId(item) !== '')
         .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
@@ -254,7 +220,7 @@ function updateHistoryChart(deviceId, sensorLogs) {
 }
 
 // ========================================================
-// 📊 ၃။ DATA EXPORT SYSTEM FUNCTIONS (STRICT COMPUTE FIX)
+// 📊 ၃။ DATA EXPORT SYSTEM FUNCTIONS (FIXED WITH TIMESTAMP)
 // ========================================================
 function getFilteredExportData() {
   let exportData = [...window.allSensorData];
@@ -266,21 +232,14 @@ function getFilteredExportData() {
     exportData = exportData.filter(item => getDevId(item) === selectedDevice);
   }
 
-  const formattedStart = formatToDateString(startDateStr);
-  const formattedEnd = formatToDateString(endDateStr);
-
-  if (formattedStart) {
-    exportData = exportData.filter(item => {
-      const itemDateStr = formatToDateString(item.created_at);
-      return itemDateStr && itemDateStr >= formattedStart;
-    });
+  if (startDateStr) {
+    const startTime = new Date(startDateStr).getTime();
+    exportData = exportData.filter(item => new Date(item.created_at).getTime() >= startTime);
   }
 
-  if (formattedEnd) {
-    exportData = exportData.filter(item => {
-      const itemDateStr = formatToDateString(item.created_at);
-      return itemDateStr && itemDateStr <= formattedEnd;
-    });
+  if (endDateStr) {
+    const endTime = new Date(endDateStr).getTime();
+    exportData = exportData.filter(item => new Date(item.created_at).getTime() <= endTime);
   }
 
   return { exportData, selectedDevice };
@@ -453,7 +412,7 @@ window.deleteDevice = async (id) => {
 };
 
 // ========================================================
-// 🧼 ၅။ FILTER AND UI RENDER LOGIC (PURE STRING COMPUTE)
+// 🧼 ၅။ FILTER AND UI RENDER LOGIC (FIXED WITH TIMESTAMP)
 // ========================================================
 function applyFiltersAndRender() {
   let filteredData = [...window.allSensorData];
@@ -466,29 +425,19 @@ function applyFiltersAndRender() {
     return;
   }
   
-  // 1. Device ID filter လုပ်ခြင်း
   filteredData = filteredData.filter(item => getDevId(item) === selectedDevice);
 
   const startDateStr = document.getElementById('start-date')?.value; 
   const endDateStr = document.getElementById('end-date')?.value;
 
-  const formattedStart = formatToDateString(startDateStr);
-  const formattedEnd = formatToDateString(endDateStr);
-
-  // 2. UI Filter - String Based Start Date Comparison
-  if (formattedStart) {
-    filteredData = filteredData.filter(item => {
-      const itemDateStr = formatToDateString(item.created_at);
-      return itemDateStr && itemDateStr >= formattedStart;
-    });
+  if (startDateStr) {
+    const startTime = new Date(startDateStr).getTime();
+    filteredData = filteredData.filter(item => new Date(item.created_at).getTime() >= startTime);
   }
 
-  // 3. UI Filter - String Based End Date Comparison
-  if (formattedEnd) {
-    filteredData = filteredData.filter(item => {
-      const itemDateStr = formatToDateString(item.created_at);
-      return itemDateStr && itemDateStr <= formattedEnd;
-    });
+  if (endDateStr) {
+    const endTime = new Date(endDateStr).getTime();
+    filteredData = filteredData.filter(item => new Date(item.created_at).getTime() <= endTime);
   }
 
   if (filteredData.length > 0) {
