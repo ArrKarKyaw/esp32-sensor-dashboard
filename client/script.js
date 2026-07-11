@@ -1,8 +1,8 @@
-// 🎯 Global Variables ကို Window Object ပေါ်မှာ တိုက်ရိုက်တင်ထားပါတယ်
+// 🎯 Global Variables 
 window.allSensorData = []; 
 window.historyChart = null;
 
-// DOM Elements 
+// DOM Elements
 const loginView = document.getElementById('login-view');
 const dashboardView = document.getElementById('dashboard-view');
 const settingsView = document.getElementById('settings-view');
@@ -210,31 +210,33 @@ function updateHistoryChart(deviceId, sensorLogs) {
 }
 
 // ========================================================
-// 📊 ၃။ DATA EXPORT SYSTEM FUNCTIONS (ISO COMPATIBLE)
+// 📊 ၃။ DATA EXPORT SYSTEM FUNCTIONS (ONLY DATE FIXED)
 // ========================================================
 function getFilteredExportData() {
   let exportData = [...window.allSensorData];
   const selectedDevice = document.getElementById('device-select')?.value;
-  const startDateStr = document.getElementById('start-date')?.value; 
-  const endDateStr = document.getElementById('end-date')?.value;     
+  const startDateStr = document.getElementById('start-date')?.value; // "YYYY-MM-DD"
+  const endDateStr = document.getElementById('end-date')?.value;     // "YYYY-MM-DD"
 
   if (selectedDevice) {
     exportData = exportData.filter(item => item.device_id === selectedDevice);
   }
 
+  // Start Date စစ်ထုတ်ခြင်း (YYYY-MM-DD ၁၀ လုံးချင်း တိုက်စစ်ပါတယ်)
   if (startDateStr && startDateStr.trim() !== "") {
     exportData = exportData.filter(item => {
       if (!item.created_at) return false;
-      const itemLocalISO = new Date(item.created_at).toLocaleString('sv').replace(' ', 'T').slice(0, 16);
-      return itemLocalISO >= startDateStr;
+      const itemDateStr = item.created_at.slice(0, 10); // "YYYY-MM-DD"
+      return itemDateStr >= startDateStr;
     });
   }
 
+  // End Date စစ်ထုတ်ခြင်း
   if (endDateStr && endDateStr.trim() !== "") {
     exportData = exportData.filter(item => {
       if (!item.created_at) return false;
-      const itemLocalISO = new Date(item.created_at).toLocaleString('sv').replace(' ', 'T').slice(0, 16);
-      return itemLocalISO <= endDateStr;
+      const itemDateStr = item.created_at.slice(0, 10); // "YYYY-MM-DD"
+      return itemDateStr <= endDateStr;
     });
   }
 
@@ -408,7 +410,7 @@ window.deleteDevice = async (id) => {
 };
 
 // ========================================================
-// 🧼 ၅။ FILTER AND UI RENDER LOGIC (ISO MATCH FIX)
+// 🧼 ၅။ FILTER AND UI RENDER LOGIC (ONLY DATE FIXED)
 // ========================================================
 function applyFiltersAndRender() {
   let filteredData = [...window.allSensorData];
@@ -422,22 +424,23 @@ function applyFiltersAndRender() {
   }
   filteredData = filteredData.filter(item => item.device_id === selectedDevice);
 
-  const startDateStr = document.getElementById('start-date')?.value; 
-  const endDateStr = document.getElementById('end-date')?.value;     
+  const startDateStr = document.getElementById('start-date')?.value; // "YYYY-MM-DD"
+  const endDateStr = document.getElementById('end-date')?.value;     // "YYYY-MM-DD"
 
+  // UI ပေါ်က Filter အတွက် ၁၀ လုံးချင်း တိုက်စစ်ခြင်း
   if (startDateStr && startDateStr.trim() !== "") {
     filteredData = filteredData.filter(item => {
       if (!item.created_at) return false;
-      const itemLocalISO = new Date(item.created_at).toLocaleString('sv').replace(' ', 'T').slice(0, 16);
-      return itemLocalISO >= startDateStr;
+      const itemDateStr = item.created_at.slice(0, 10); // "YYYY-MM-DD"
+      return itemDateStr >= startDateStr;
     });
   }
 
   if (endDateStr && endDateStr.trim() !== "") {
     filteredData = filteredData.filter(item => {
       if (!item.created_at) return false;
-      const itemLocalISO = new Date(item.created_at).toLocaleString('sv').replace(' ', 'T').slice(0, 16);
-      return itemLocalISO <= endDateStr;
+      const itemDateStr = item.created_at.slice(0, 10); // "YYYY-MM-DD"
+      return itemDateStr <= endDateStr;
     });
   }
 
