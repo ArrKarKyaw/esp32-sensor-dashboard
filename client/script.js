@@ -1,4 +1,4 @@
-// 🎯 Global Variables ကို Window Object ပေါ်မှာ တိုက်ရိုက်တင်ပြီး သေချာအောင် လုပ်ထားပါတယ်
+// 🎯 Global Variables ကို Window Object ပေါ်မှာ တိုက်ရိုက်တင်ပြီး သေჩာအောင် လုပ်ထားပါတယ်
 window.allSensorData = []; 
 window.historyChart = null;
 
@@ -38,7 +38,7 @@ if (loginForm) {
         body: JSON.stringify({ username, password })
       });
       if (!response.ok) throw new Error('Login failed');
-      
+   
       const data = await response.json();
       localStorage.setItem('token', data.token);
       localStorage.setItem('username', data.username);
@@ -103,7 +103,6 @@ async function updateDashboardData() {
     if (rawData && rawData.length > 0) {
       // 🎯 ဒေတာအသစ်ဆုံးတွေကို ထိပ်ဆုံးကနေ စီပေးထားပါတယ်
       window.allSensorData = [...rawData].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-
       renderElevatorList(window.allSensorData);
       updateDeviceSelectOptions(window.allSensorData);
       applyFiltersAndRender();
@@ -182,14 +181,12 @@ function updateHistoryChart(deviceId, sensorLogs) {
 
   const reversedLogs = [...sensorLogs].slice(0, 20).reverse();
   const labels = reversedLogs.map(log => new Date(log.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
-
   if (window.historyChart) {
     window.historyChart.destroy();
     window.historyChart = null;
   }
 
   let datasets = [];
-
   if (deviceId === 'lift-01' || deviceId === 'lift-03') {
     datasets = [
       { label: 'Temperature (°C)', data: reversedLogs.map(log => log.temperature || null), borderColor: '#ff6384', borderWidth: 2, tension: 0.2 },
@@ -226,14 +223,20 @@ function getFilteredExportData() {
   if (startDateStr && startDateStr.trim() !== "") {
     const startTime = new Date(startDateStr).getTime();
     if (!isNaN(startTime)) {
-      exportData = exportData.filter(item => new Date(item.created_at).getTime() >= startTime);
+      exportData = exportData.filter(item => {
+        if (!item.created_at) return false;
+        return new Date(item.created_at).getTime() >= startTime;
+      });
     }
   }
 
   if (endDateStr && endDateStr.trim() !== "") {
     const endTime = new Date(endDateStr).getTime();
     if (!isNaN(endTime)) {
-      exportData = exportData.filter(item => new Date(item.created_at).getTime() <= endTime);
+      exportData = exportData.filter(item => {
+        if (!item.created_at) return false;
+        return new Date(item.created_at).getTime() <= endTime;
+      });
     }
   }
 
@@ -242,7 +245,10 @@ function getFilteredExportData() {
 
 function exportToCSV() {
   const { exportData, selectedDevice } = getFilteredExportData();
-  if (exportData.length === 0) { alert("No data found for the selected criteria!"); return; }
+  if (exportData.length === 0) { 
+    console.log("No data found for CSV export"); 
+    return; 
+  }
 
   let csvContent = "data:text/csv;charset=utf-8,";
   csvContent += "Timestamp,Device ID,Temperature(C),Humidity(%),Door Status,Accel X,Accel Y,Accel Z\n";
@@ -251,7 +257,6 @@ function exportToCSV() {
     let time = new Date(row.created_at).toLocaleString();
     csvContent += `"${time}","${row.device_id || ''}",${row.temperature},${row.humidity},"${row.door_status || ''}",${row.accel_x || 0},${row.accel_y || 0},${row.accel_z || 0}\n`;
   });
-  
   const encodedUri = encodeURI(csvContent);
   const link = document.createElement("a");
   link.setAttribute("href", encodedUri);
@@ -266,12 +271,14 @@ function exportToCSV() {
 
 function exportToJSON() {
   const { exportData, selectedDevice } = getFilteredExportData();
-  if (exportData.length === 0) { alert("No data found for the selected criteria!"); return; }
+  if (exportData.length === 0) { 
+    console.log("No data found for JSON export"); 
+    return;
+  }
 
   const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(exportData, null, 2));
   const link = document.createElement("a");
   link.setAttribute("href", dataStr);
-  
   const fileName = selectedDevice ? `elevator_report_${selectedDevice}_${new Date().toISOString().slice(0,10)}.json` : `elevator_report_all_${new Date().toISOString().slice(0,10)}.json`;
   link.setAttribute("download", fileName);
   
@@ -409,27 +416,24 @@ window.deleteDevice = async (id) => {
 };
 
 // ========================================================
-// 🧼 ၅။ FILTER AND UI RENDER LOGIC (DATETIME-LOCAL FIXED)
+// 🧼 ၅။ FILTER AND UI RENDER LOGIC (DATETIME ISO FIXED)
 // ========================================================
 function applyFiltersAndRender() {
-  // Global variable ထဲက ဒေတာမူရင်းကို ယူသုံးပါတယ်
   let filteredData = [...window.allSensorData];
   const selectedDevice = document.getElementById('device-select')?.value;
 
-  // Lift ကတ်တွေကို ဘယ်အချိန်မဆို နှိပ်လို့ရအောင် အမြဲ Render အရင်လုပ်ပေးထားပါတယ်
   renderElevatorList(window.allSensorData);
 
-  // ၁။ Device ID ကို အရင် စစ်ထုတ်ပါမယ်
   if (!selectedDevice) {
     resetUIElements();
     return;
   }
   filteredData = filteredData.filter(item => item.device_id === selectedDevice);
 
-  // ၂။ ရက်စွဲ + အချိန် စစ်ထုတ်မှုအပိုင်း (datetime-local format အတွက် စိတ်ချရအောင် အချိန်ပြောင်းနှိုင်းယှဉ်နည်း သုံးပါတယ်)
   const startDateStr = document.getElementById('start-date')?.value; // "YYYY-MM-DDTHH:mm"
   const endDateStr = document.getElementById('end-date')?.value;     // "YYYY-MM-DDTHH:mm"
 
+  // 🎯 `<input type="datetime-local">` အတွက် တိကျသေချာသော မီလီစက္ကန့် နှိုင်းယှဉ်ချက်စနစ်
   if (startDateStr && startDateStr.trim() !== "") {
     const startTime = new Date(startDateStr).getTime();
     if (!isNaN(startTime)) {
@@ -450,9 +454,8 @@ function applyFiltersAndRender() {
     }
   }
 
-  // ၃။ UI ပေါ်တွင် ဒေတာများ ထုတ်ပြခြင်း
   if (filteredData.length > 0) {
-    const latest = filteredData[0]; // နောက်ဆုံးရဒေတာ
+    const latest = filteredData[0];
 
     if (document.getElementById('temperature-value')) {
       document.getElementById('temperature-value').innerText = (latest.temperature && latest.temperature > 0) ? latest.temperature.toFixed(1) + " °C" : "-- °C";
@@ -478,11 +481,9 @@ function applyFiltersAndRender() {
       `;
     }
 
-    // Graph ဆွဲပေးရန်
     updateHistoryChart(selectedDevice, filteredData);
   } else {
     resetUIElements();
-    // စစ်ထုတ်လိုက်တဲ့ အချိန်အတွင်း ဒေတာတကယ် မရှိမှသာ စာသားပြပါမယ် (Alert မသုံးတော့ဘဲ စာသားပဲ ပြောင်းပေးထားပါတယ်)
     if (document.getElementById('other-value')) {
       document.getElementById('other-value').innerText = "No data found for the selected date range.";
     }
