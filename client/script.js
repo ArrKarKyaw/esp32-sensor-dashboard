@@ -2,31 +2,10 @@
 window.allSensorData = []; 
 window.historyChart = null;
 
-const settingsBackButton = document.getElementById('settings-back-button');
-
 // 🛠️ Helper to Safely get Device ID
 function getDevId(item) {
   if (!item) return '';
   return item.device_id || item.ce_id || '';
-}
-
-// ⚙️ Navigation Setup
-if (window.settingsButton) {
-  window.settingsButton.addEventListener('click', () => {
-    if (window.dashboardView) window.dashboardView.classList.add('hidden');
-    if (window.settingsView) window.settingsView.classList.remove('hidden');
-    if (typeof window.loadSettingsData === 'function') {
-      window.loadSettingsData(); 
-    }
-  });
-}
-
-if (settingsBackButton) {
-  settingsBackButton.addEventListener('click', () => {
-    if (typeof window.showDashboard === 'function') {
-      window.showDashboard();
-    }
-  });
 }
 
 // ========================================================
@@ -235,19 +214,47 @@ function resetUIElements() {
   }
 }
 
-// 🎯 Event Bindings & Initialization
+// 🎯 Event Bindings & Initialization (DOM Fully Loaded Safe Zone)
 window.addEventListener('DOMContentLoaded', () => {
-  // Init Settings form events safely
+  // 1. Global View Mapping (သေချာအောင် DOM ဖွင့်ပြီးမှ ထပ်ဆွဲယူပါသည်)
+  window.settingsButton = document.getElementById('settings-button');
+  window.settingsBackButton = document.getElementById('settings-back-button');
+  window.dashboardView = document.getElementById('dashboard-view');
+  window.settingsView = document.getElementById('settings-view');
+
+  // Admin Settings Forms တွေရဲ့ logic တွေကို init လုပ်ခြင်း
   if (typeof window.initSettingsEvents === 'function') {
     window.initSettingsEvents();
   }
 
+  // ⚙️ Navigation Setup (Settings ခလုတ် နှိပ်လျှင် Settings ပွင့်ရန်)
+  if (window.settingsButton) {
+    window.settingsButton.addEventListener('click', () => {
+      if (window.dashboardView) window.dashboardView.classList.add('hidden');
+      if (window.settingsView) window.settingsView.classList.remove('hidden');
+      if (typeof window.loadSettingsData === 'function') {
+        window.loadSettingsData(); 
+      }
+    });
+  }
+
+  // Settings ထဲက Back ခလုတ်နှိပ်ရင် Dashboard ပြန်သွားရန်
+  if (window.settingsBackButton) {
+    window.settingsBackButton.addEventListener('click', () => {
+      if (typeof window.showDashboard === 'function') {
+        window.showDashboard();
+      }
+    });
+  }
+
+  // Device Select Dropdown Design Style Fix
   const deviceSelectEl = document.getElementById('device-select');
   if (deviceSelectEl) {
     deviceSelectEl.style.color = "#222222";
     deviceSelectEl.style.backgroundColor = "#ffffff";
   }
 
+  // Filter Button Event Click Handle
   document.getElementById('filter-button')?.addEventListener('click', (e) => {
     e.preventDefault(); 
     applyFiltersAndRender();
@@ -255,6 +262,7 @@ window.addEventListener('DOMContentLoaded', () => {
   
   document.getElementById('device-select')?.addEventListener('change', applyFiltersAndRender);
   
+  // Data Exports Click Listeners
   document.getElementById('export-csv')?.addEventListener('click', () => {
     if (typeof window.exportToCSV === 'function') window.exportToCSV();
   });
@@ -262,6 +270,7 @@ window.addEventListener('DOMContentLoaded', () => {
     if (typeof window.exportToJSON === 'function') window.exportToJSON();
   });
 
+  // 🌓 Theme Toggle (Dark / Light)
   const themeToggleBtn = document.getElementById('theme-toggle');
   if (themeToggleBtn) {
     themeToggleBtn.addEventListener('click', () => {
@@ -276,6 +285,45 @@ window.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  // 🌐 Language Toggle Setup (Dropdown Change System)
+  const langSelect = document.getElementById('lang-select') || document.querySelector('select');
+  if (langSelect) {
+    langSelect.addEventListener('change', (e) => {
+      const selectedLang = e.target.value;
+      const titleEl = document.querySelector('h1') || document.querySelector('.title');
+      
+      let liftHeaderEl = null;
+      document.querySelectorAll('h1, h2, h3, h4, div').forEach(el => {
+        if (el.textContent.includes('Active Elevators') || el.textContent.includes('လက်ရှိအလုပ်လုပ်နေသော')) {
+          liftHeaderEl = el;
+        }
+      });
+
+      if (selectedLang === 'MY') {
+        if (titleEl) titleEl.textContent = 'ဓာတ်လှေကား အချက်အလက် ဒက်ရှ်ဘုတ်';
+        if (liftHeaderEl) liftHeaderEl.textContent = 'လက်ရှိအလုပ်လုပ်နေသော ဓာတ်လှေကားများ (Multi-ESP32 Nodes)';
+        
+        document.querySelectorAll('div, label, th, button').forEach(el => {
+          if (el.textContent.trim() === 'Temperature') el.innerText = 'အပူချိန်';
+          if (el.textContent.trim() === 'Humidity') el.innerText = 'စိုထိုင်းဆ';
+          if (el.textContent.trim() === 'Pressure') el.innerText = 'လေဖိအား';
+          if (el.textContent.trim() === 'Door Status') el.innerText = 'တံခါး အခြေအနေ';
+        });
+      } else if (selectedLang === 'EN') {
+        if (titleEl) titleEl.textContent = 'Elevator Information Dashboard';
+        if (liftHeaderEl) liftHeaderEl.textContent = 'Active Elevators Status (Multi-ESP32 Nodes)';
+        
+        document.querySelectorAll('div, label, th, button').forEach(el => {
+          if (el.textContent.trim() === 'အပူချိန်') el.innerText = 'Temperature';
+          if (el.textContent.trim() === 'စိုထိုင်းဆ') el.innerText = 'Humidity';
+          if (el.textContent.trim() === 'လေဖိအား') el.innerText = 'Pressure';
+          if (el.textContent.trim() === 'တံခါး အခြေအနေ') el.innerText = 'Door Status';
+        });
+      }
+    });
+  }
+
+  // Auth & Initial Load Handling
   if (localStorage.getItem('token')) { 
     if (typeof window.showDashboard === 'function') window.showDashboard();
   } else {
@@ -284,5 +332,6 @@ window.addEventListener('DOMContentLoaded', () => {
     if (window.userActions) window.userActions.classList.add('hidden');
   }
 
+  // Real-time loop
   setInterval(window.updateDashboardData, 5000); 
 });
