@@ -207,35 +207,41 @@ function updateHistoryChart(deviceId, sensorLogs) {
 }
 
 // ========================================================
-// 📊 ၃။ DATA EXPORT SYSTEM FUNCTIONS (SAFE DATE STRIP)
+// 📊 ၃။ DATA EXPORT SYSTEM FUNCTIONS (ACCURATE DATE COMPARISON)
 // ========================================================
 function getFilteredExportData() {
   let exportData = [...window.allSensorData];
   const selectedDevice = document.getElementById('device-select')?.value;
-  let startDateStr = document.getElementById('start-date')?.value; 
-  let endDateStr = document.getElementById('end-date')?.value;
+  const startDateStr = document.getElementById('start-date')?.value; 
+  const endDateStr = document.getElementById('end-date')?.value;
 
   if (selectedDevice) {
     exportData = exportData.filter(item => item.device_id === selectedDevice);
   }
 
-  // 🎯 Start Date ကို ပုံစံတူ "YYYY-MM-DD" ဖြစ်အောင် slice ဖြတ်ပြီး နှိုင်းယှဉ်ပါတယ်
+  // 🎯 Start Date ကို Date Object သို့ပြောင်းပြီး ရက်စွဲသက်သက် နှိုင်းယှဉ်ခြင်း
   if (startDateStr && startDateStr.trim() !== "") {
-    const formattedStart = startDateStr.slice(0, 10); 
+    const startTarget = new Date(startDateStr);
+    startTarget.setHours(0,0,0,0); // ညဉ့်နက် ၁၂ နာရီအဖြစ် သတ်မှတ်သည်
+
     exportData = exportData.filter(item => {
       if (!item.created_at) return false;
-      const itemDateStr = item.created_at.slice(0, 10); 
-      return itemDateStr >= formattedStart;
+      const itemDate = new Date(item.created_at);
+      itemDate.setHours(0,0,0,0);
+      return itemDate.getTime() >= startTarget.getTime();
     });
   }
 
-  // 🎯 End Date ကို ပုံစံတူ "YYYY-MM-DD" ဖြစ်အောင် slice ဖြတ်ပြီး နှိုင်းယှဉ်ပါတယ်
+  // 🎯 End Date ကို Date Object သို့ပြောင်းပြီး ရက်စွဲသက်သက် နှိုင်းယှဉ်ခြင်း
   if (endDateStr && endDateStr.trim() !== "") {
-    const formattedEnd = endDateStr.slice(0, 10);
+    const endTarget = new Date(endDateStr);
+    endTarget.setHours(0,0,0,0);
+
     exportData = exportData.filter(item => {
       if (!item.created_at) return false;
-      const itemDateStr = item.created_at.slice(0, 10);
-      return itemDateStr <= formattedEnd;
+      const itemDate = new Date(item.created_at);
+      itemDate.setHours(0,0,0,0);
+      return itemDate.getTime() <= endTarget.getTime();
     });
   }
 
@@ -409,7 +415,7 @@ window.deleteDevice = async (id) => {
 };
 
 // ========================================================
-// 🧼 ၅။ FILTER AND UI RENDER LOGIC (FIXED FOR ALL INPUT FORMATS)
+// 🧼 ၅။ FILTER AND UI RENDER LOGIC (SAFE DATE OBJECT COMPARE)
 // ========================================================
 function applyFiltersAndRender() {
   let filteredData = [...window.allSensorData];
@@ -423,26 +429,32 @@ function applyFiltersAndRender() {
   }
   filteredData = filteredData.filter(item => item.device_id === selectedDevice);
 
-  let startDateStr = document.getElementById('start-date')?.value; 
-  let endDateStr = document.getElementById('end-date')?.value;
+  const startDateStr = document.getElementById('start-date')?.value; 
+  const endDateStr = document.getElementById('end-date')?.value;
 
-  // 🎯 UI Filter - Start Date အမှားအယွင်းမရှိ စစ်ထုတ်ခြင်း
+  // 🎯 UI Filter - Start Date ကို တိကျသော Date Timestamp ဖြင့် စစ်ထုတ်ခြင်း
   if (startDateStr && startDateStr.trim() !== "") {
-    const formattedStart = startDateStr.slice(0, 10); // input က ဘာပဲလာလာ ရှေ့ဆုံး "YYYY-MM-DD" ကိုပဲ ဖြတ်ယူတယ်
+    const startTarget = new Date(startDateStr);
+    startTarget.setHours(0,0,0,0);
+
     filteredData = filteredData.filter(item => {
       if (!item.created_at) return false;
-      const itemDateStr = item.created_at.slice(0, 10); 
-      return itemDateStr >= formattedStart;
+      const itemDate = new Date(item.created_at);
+      itemDate.setHours(0,0,0,0);
+      return itemDate.getTime() >= startTarget.getTime();
     });
   }
 
-  // 🎯 UI Filter - End Date အမှားအယွင်းမရှိ စစ်ထုတ်ခြင်း
+  // 🎯 UI Filter - End Date ကို တိကျသော Date Timestamp ဖြင့် စစ်ထုတ်ခြင်း
   if (endDateStr && endDateStr.trim() !== "") {
-    const formattedEnd = endDateStr.slice(0, 10); // input က ဘာပဲလာလာ ရှေ့ဆုံး "YYYY-MM-DD" ကိုပဲ ဖြတ်ယူတယ်
+    const endTarget = new Date(endDateStr);
+    endTarget.setHours(0,0,0,0);
+
     filteredData = filteredData.filter(item => {
       if (!item.created_at) return false;
-      const itemDateStr = item.created_at.slice(0, 10);
-      return itemDateStr <= formattedEnd;
+      const itemDate = new Date(item.created_at);
+      itemDate.setHours(0,0,0,0);
+      return itemDate.getTime() <= endTarget.getTime();
     });
   }
 
