@@ -210,7 +210,7 @@ function updateHistoryChart(deviceId, sensorLogs) {
 }
 
 // ========================================================
-// 📊 ၃။ DATA EXPORT SYSTEM FUNCTIONS (ONLY DATE FIXED)
+// 📊 ၃။ DATA EXPORT SYSTEM FUNCTIONS (DIRECTIONS FIXED)
 // ========================================================
 function getFilteredExportData() {
   let exportData = [...window.allSensorData];
@@ -222,20 +222,20 @@ function getFilteredExportData() {
     exportData = exportData.filter(item => item.device_id === selectedDevice);
   }
 
-  // Start Date စစ်ထုတ်ခြင်း (YYYY-MM-DD ၁၀ လုံးချင်း တိုက်စစ်ပါတယ်)
+  // Start Date ( >= ဖြစ်ရမည် - သေချာပြင်ထားပါတယ်)
   if (startDateStr && startDateStr.trim() !== "") {
     exportData = exportData.filter(item => {
       if (!item.created_at) return false;
-      const itemDateStr = item.created_at.slice(0, 10); // "YYYY-MM-DD"
+      const itemDateStr = item.created_at.slice(0, 10);
       return itemDateStr >= startDateStr;
     });
   }
 
-  // End Date စစ်ထုတ်ခြင်း
+  // End Date ( <= ဖြစ်ရမည် - သေချာပြင်ထားပါတယ်)
   if (endDateStr && endDateStr.trim() !== "") {
     exportData = exportData.filter(item => {
       if (!item.created_at) return false;
-      const itemDateStr = item.created_at.slice(0, 10); // "YYYY-MM-DD"
+      const itemDateStr = item.created_at.slice(0, 10);
       return itemDateStr <= endDateStr;
     });
   }
@@ -410,7 +410,7 @@ window.deleteDevice = async (id) => {
 };
 
 // ========================================================
-// 🧼 ၅။ FILTER AND UI RENDER LOGIC (ONLY DATE FIXED)
+// 🧼 ၅။ FILTER AND UI RENDER LOGIC (DIRECTIONS FIXED)
 // ========================================================
 function applyFiltersAndRender() {
   let filteredData = [...window.allSensorData];
@@ -427,19 +427,20 @@ function applyFiltersAndRender() {
   const startDateStr = document.getElementById('start-date')?.value; // "YYYY-MM-DD"
   const endDateStr = document.getElementById('end-date')?.value;     // "YYYY-MM-DD"
 
-  // UI ပေါ်က Filter အတွက် ၁၀ လုံးချင်း တိုက်စစ်ခြင်း
+  // Start Date Filter ( >= ပြင်ဆင်ပြီး)
   if (startDateStr && startDateStr.trim() !== "") {
     filteredData = filteredData.filter(item => {
       if (!item.created_at) return false;
-      const itemDateStr = item.created_at.slice(0, 10); // "YYYY-MM-DD"
+      const itemDateStr = item.created_at.slice(0, 10);
       return itemDateStr >= startDateStr;
     });
   }
 
+  // End Date Filter ( <= ပြင်ဆင်ပြီး)
   if (endDateStr && endDateStr.trim() !== "") {
     filteredData = filteredData.filter(item => {
       if (!item.created_at) return false;
-      const itemDateStr = item.created_at.slice(0, 10); // "YYYY-MM-DD"
+      const itemDateStr = item.created_at.slice(0, 10);
       return itemDateStr <= endDateStr;
     });
   }
