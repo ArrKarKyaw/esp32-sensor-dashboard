@@ -25,6 +25,38 @@ const deviceError = document.getElementById('device-error');
 const usersTableBody = document.getElementById('users-table-body');
 const devicesTableBody = document.getElementById('devices-table-body');
 
+// 🛠️ ရက်စွဲသက်သက်ကိုသာ ပိုင်းခြားပြီး Date Object ပြောင်းပေးမည့် စနစ် (Time ကင်းလွတ်ခွင့်)
+function safeParseDateOnly(dateStr) {
+  if (!dateStr) return null;
+  
+  // Database က လာသော Format ဖြစ်လျှင် (ဥပမာ - "11/07/2026, 10:45:22")
+  if (typeof dateStr === 'string' && dateStr.includes('/')) {
+    const cleanStr = dateStr.split(',')[0].trim(); // "11/07/2026"
+    const parts = cleanStr.split('/');
+    if (parts.length === 3) {
+      const day = parseInt(parts[0], 10);
+      const month = parseInt(parts[1], 10) - 1;
+      const year = parseInt(parts[2], 10);
+      return new Date(year, month, day, 0, 0, 0, 0); // နာရီကို 00:00 အဖြစ် သုညညှိသည်
+    }
+  }
+  
+  // HTML Input (datetime-local / date) က လာသော Format ဖြစ်လျှင် (ဥပမာ - "2026-07-11T11:00")
+  const parsed = new Date(dateStr);
+  if (!isNaN(parsed.getTime())) {
+    // 🎯 တန်ဖိုးရှိသမျှ နာရီ၊ မိနစ်၊ စက္ကန့် အကုန်လုံးကို ဖယ်ထုတ်ပြီး ရက်စွဲ သက်သက်ပဲ ယူသည်
+    return new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate(), 0, 0, 0, 0);
+  }
+  
+  return null;
+}
+
+// 🛠️ Helper to Safely get Device ID (Null Safe)
+function getDevId(item) {
+  if (!item) return '';
+  return item.device_id || item.ce_id || '';
+}
+
 // 🔐 ၁။ Handle Login System
 if (loginForm) {
   loginForm.addEventListener('submit', async (e) => {
@@ -101,10 +133,15 @@ async function updateDashboardData() {
     const rawData = await response.json();
 
     if (rawData && rawData.length > 0) {
-      window.allSensorData = [...rawData].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-      renderElevatorList(window.allSensorData);
-      updateDeviceSelectOptions(window.allSensorData);
-      applyFiltersAndRender();
+      window.allSensorData = rawData
+        .filter(item => getDevId(item) !== '')
+        .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+      if (window.allSensorData.length > 0) {
+        renderElevatorList(window.allSensorData);
+        updateDeviceSelectOptions(window.allSensorData);
+        applyFiltersAndRender();
+      }
     }
   } catch (error) {
     console.error("Error fetching sensor data:", error);
@@ -115,11 +152,13 @@ function renderElevatorList(data) {
   const listContainer = document.getElementById('lift-status-list');
   if (!listContainer) return;
 
-  const deviceKeys = [...new Set(data.map(item => item.device_id).filter(Boolean))];
+  const deviceKeys = [...new Set(data.map(item => getDevId(item)).filter(Boolean))];
   listContainer.innerHTML = ""; 
 
   deviceKeys.forEach(devId => {
-    const devData = data.find(item => item.device_id === devId);
+    const devData = data.find(item => getDevId(item) === devId);
+    if (!devData) return;
+    
     const isOpen = devData.door_status === "Open";
     const statusColor = isOpen ? "#ff6384" : "#4bc0c0";
 
@@ -160,7 +199,7 @@ function updateDeviceSelectOptions(data) {
   if (!deviceSelect) return;
   const currentSelected = deviceSelect.value;
   deviceSelect.innerHTML = '<option value="" style="color: #222222; background-color: #ffffff;">-- Select Device --</option>';
-  const uniqueDevices = [...new Set(data.map(item => item.device_id).filter(Boolean))];
+  const uniqueDevices = [...new Set(data.map(item => getDevId(item)).filter(Boolean))];
   uniqueDevices.forEach(devKey => {
     let opt = document.createElement('option');
     opt.value = devKey;
@@ -207,7 +246,7 @@ function updateHistoryChart(deviceId, sensorLogs) {
 }
 
 // ========================================================
-// 📊 ၃။ DATA EXPORT SYSTEM FUNCTIONS (ACCURATE DATE COMPARISON)
+// 📊 ၃။ DATA EXPORT SYSTEM FUNCTIONS (DATE-ONLY COMPARE)
 // ========================================================
 function getFilteredExportData() {
   let exportData = [...window.allSensorData];
@@ -216,33 +255,27 @@ function getFilteredExportData() {
   const endDateStr = document.getElementById('end-date')?.value;
 
   if (selectedDevice) {
-    exportData = exportData.filter(item => item.device_id === selectedDevice);
+    exportData = exportData.filter(item => getDevId(item) === selectedDevice);
   }
 
-  // 🎯 Start Date ကို Date Object သို့ပြောင်းပြီး ရက်စွဲသက်သက် နှိုင်းယှဉ်ခြင်း
   if (startDateStr && startDateStr.trim() !== "") {
-    const startTarget = new Date(startDateStr);
-    startTarget.setHours(0,0,0,0); // ညဉ့်နက် ၁၂ နာရီအဖြစ် သတ်မှတ်သည်
-
-    exportData = exportData.filter(item => {
-      if (!item.created_at) return false;
-      const itemDate = new Date(item.created_at);
-      itemDate.setHours(0,0,0,0);
-      return itemDate.getTime() >= startTarget.getTime();
-    });
+    const startTarget = safeParseDateOnly(startDateStr);
+    if (startTarget) {
+      exportData = exportData.filter(item => {
+        const itemDate = safeParseDateOnly(item.created_at);
+        return itemDate && itemDate.getTime() >= startTarget.getTime();
+      });
+    }
   }
 
-  // 🎯 End Date ကို Date Object သို့ပြောင်းပြီး ရက်စွဲသက်သက် နှိုင်းယှဉ်ခြင်း
   if (endDateStr && endDateStr.trim() !== "") {
-    const endTarget = new Date(endDateStr);
-    endTarget.setHours(0,0,0,0);
-
-    exportData = exportData.filter(item => {
-      if (!item.created_at) return false;
-      const itemDate = new Date(item.created_at);
-      itemDate.setHours(0,0,0,0);
-      return itemDate.getTime() <= endTarget.getTime();
-    });
+    const endTarget = safeParseDateOnly(endDateStr);
+    if (endTarget) {
+      exportData = exportData.filter(item => {
+        const itemDate = safeParseDateOnly(item.created_at);
+        return itemDate && itemDate.getTime() <= endTarget.getTime();
+      });
+    }
   }
 
   return { exportData, selectedDevice };
@@ -257,7 +290,7 @@ function exportToCSV() {
   
   exportData.forEach(row => {
     let time = new Date(row.created_at).toLocaleString();
-    csvContent += `"${time}","${row.device_id || ''}",${row.temperature},${row.humidity},"${row.door_status || ''}",${row.accel_x || 0},${row.accel_y || 0},${row.accel_z || 0}\n`;
+    csvContent += `"${time}","${getDevId(row)}",${row.temperature},${row.humidity},"${row.door_status || ''}",${row.accel_x || 0},${row.accel_y || 0},${row.accel_z || 0}\n`;
   });
   const encodedUri = encodeURI(csvContent);
   const link = document.createElement("a");
@@ -320,7 +353,7 @@ async function loadSettingsData() {
       const fiveMinutesAgo = Date.now() - (5 * 60 * 1000);
       activeDeviceIds = logs
         .filter(log => new Date(log.created_at).getTime() > fiveMinutesAgo)
-        .map(log => log.device_id);
+        .map(log => getDevId(log));
     }
 
     const resDevices = await fetch('/api/devices', { headers: { 'Authorization': `Bearer ${token}` } });
@@ -415,7 +448,7 @@ window.deleteDevice = async (id) => {
 };
 
 // ========================================================
-// 🧼 ၅။ FILTER AND UI RENDER LOGIC (SAFE DATE OBJECT COMPARE)
+// 🧼 ၅။ FILTER AND UI RENDER LOGIC (PURE DATE BASED COMPARE)
 // ========================================================
 function applyFiltersAndRender() {
   let filteredData = [...window.allSensorData];
@@ -427,35 +460,33 @@ function applyFiltersAndRender() {
     resetUIElements();
     return;
   }
-  filteredData = filteredData.filter(item => item.device_id === selectedDevice);
+  
+  // 1. Device ID filter လုပ်ခြင်း
+  filteredData = filteredData.filter(item => getDevId(item) === selectedDevice);
 
   const startDateStr = document.getElementById('start-date')?.value; 
   const endDateStr = document.getElementById('end-date')?.value;
 
-  // 🎯 UI Filter - Start Date ကို တိကျသော Date Timestamp ဖြင့် စစ်ထုတ်ခြင်း
+  // 2. UI Filter - Robust Start Date Only Comparison
   if (startDateStr && startDateStr.trim() !== "") {
-    const startTarget = new Date(startDateStr);
-    startTarget.setHours(0,0,0,0);
-
-    filteredData = filteredData.filter(item => {
-      if (!item.created_at) return false;
-      const itemDate = new Date(item.created_at);
-      itemDate.setHours(0,0,0,0);
-      return itemDate.getTime() >= startTarget.getTime();
-    });
+    const startTarget = safeParseDateOnly(startDateStr);
+    if (startTarget) {
+      filteredData = filteredData.filter(item => {
+        const itemDate = safeParseDateOnly(item.created_at);
+        return itemDate && itemDate.getTime() >= startTarget.getTime();
+      });
+    }
   }
 
-  // 🎯 UI Filter - End Date ကို တိကျသော Date Timestamp ဖြင့် စစ်ထုတ်ခြင်း
+  // 3. UI Filter - Robust End Date Only Comparison
   if (endDateStr && endDateStr.trim() !== "") {
-    const endTarget = new Date(endDateStr);
-    endTarget.setHours(0,0,0,0);
-
-    filteredData = filteredData.filter(item => {
-      if (!item.created_at) return false;
-      const itemDate = new Date(item.created_at);
-      itemDate.setHours(0,0,0,0);
-      return itemDate.getTime() <= endTarget.getTime();
-    });
+    const endTarget = safeParseDateOnly(endDateStr);
+    if (endTarget) {
+      filteredData = filteredData.filter(item => {
+        const itemDate = safeParseDateOnly(item.created_at);
+        return itemDate && itemDate.getTime() <= endTarget.getTime();
+      });
+    }
   }
 
   if (filteredData.length > 0) {
@@ -471,7 +502,7 @@ function applyFiltersAndRender() {
       document.getElementById('pressure-value').innerText = (latest.pressure && latest.pressure > 0) ? latest.pressure.toFixed(1) + " hPa" : "-- hPa";
     }
     if (document.getElementById('other-value')) {
-      document.getElementById('other-value').innerText = latest.device_id ? `Active: ${latest.device_id.toUpperCase()}` : "--";
+      document.getElementById('other-value').innerText = getDevId(latest) ? `Active: ${getDevId(latest).toUpperCase()}` : "--";
     }
     if (document.getElementById('door-status-value')) {
       document.getElementById('door-status-value').innerText = latest.door_status || "--";
@@ -544,7 +575,7 @@ window.addEventListener('DOMContentLoaded', () => {
   } else {
     if (loginView) loginView.classList.remove('hidden');
     if (dashboardView) dashboardView.classList.add('hidden');
-    if (userActions) userActions.classList.add('hidden');
+    if (userActions) userActions.classList.remove('hidden');
   }
 
   setInterval(updateDashboardData, 5000); 
