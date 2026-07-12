@@ -3,8 +3,8 @@ window.allSensorData = [];
 window.historyChart = null;
 
 // 🌐 5-Language JSON Dictionary System (ပြင်ပ JSON ဖိုင်မှ Data သိမ်းဆည်းရန် Variable)
-let languages = null;
-
+//let languages = null;
+window.languages = null;
 // 🛠️ Helper to Safely get Device ID
 function getDevId(item) {
   if (!item) return '';
@@ -345,12 +345,14 @@ window.addEventListener('DOMContentLoaded', async () => {
     window.dispatchEvent(new CustomEvent('languageChanged', { detail: { lang: code.toUpperCase() } }));
   };
 
-  // 📥 language.json ဖိုင်ကို လှမ်းဖတ်ယူခြင်း (Vercel Client Folder လမ်းကြောင်းအတိုင်း ပြင်ဆင်ပြီး)
+ // 📥 language.json ဖိုင်ကို လှမ်းဖတ်ယူခြင်း (Vercel Fixed)
   try {
-    // Relative Path ('language.json') သုံးမှ client ဖိုဒါထဲက ဖိုင်ကို Vercel ပေါ်မှာ 404 မတက်ဘဲ အမှန်ကန်ဆုံး ဖတ်ယူနိုင်ပါလိမ့်မယ်။
-    const langResponse = await fetch('language.json?cache_bust=' + Date.now()); 
+    // Vercel ပေါ်တွင် Body အလွတ်ပြန်မလာစေရန် ?cache_bust= ကို ဖယ်ရှားပြီး တိုက်ရိုက်လမ်းကြောင်းပြောင်းထားပါသည်
+    const langResponse = await fetch('./language.json'); 
     if (!langResponse.ok) throw new Error("language.json loading failed");
-    languages = await langResponse.json();
+    
+    // Global variable အဖြစ် Window object ပေါ်သို့ တိုက်ရိုက်သတ်မှတ်ခြင်း
+    window.languages = await langResponse.json();
 
     if (langSelect) {
       langSelect.addEventListener('change', (e) => {
