@@ -37,26 +37,44 @@ window.updateDashboardData = async function() {
   }
 }
 
+// global dynamic devices array (ဒါက အပေါ်မှာ api/devices ကနေ fetch လုပ်ပြီး သိမ်းထားတဲ့ စာရင်းဖြစ်ရပါမယ်)
+// ဥပမာ - window.registeredDevices = await resDevices.json();
+
 function renderElevatorList(data) {
   const listContainer = document.getElementById('lift-status-list');
   if (!listContainer) return;
 
-  const deviceKeys = [...new Set(data.map(item => getDevId(item)).filter(Boolean))];
+  // ❌ ကုဒ်အဟောင်း: data logs ထဲကပဲ device_key ရှာတာ
+  // const deviceKeys = [...new Set(data.map(item => getDevId(item)).filter(Boolean))];
+
+  //  ပြင်ဆင်ချက်စနစ်သစ်: မှတ်ပုံတင်ထားတဲ့ devices အားလုံးရဲ့ key တွေကို သုံးမယ်
+  // (အကယ်၍ window.registeredDevices မရှိရင် လက်ရှိ `devices` array variable ကို ထည့်ပါ)
+  const allDevices = window.registeredDevices || []; 
+  
+  if (allDevices.length === 0) {
+    // စနစ်ထဲမှာ device မရှိသေးရင် logs ထဲကပဲ fallback အနေနဲ့ ယူမယ်
+    var deviceKeys = [...new Set(data.map(item => getDevId(item)).filter(Boolean))];
+  } else {
+    var deviceKeys = allDevices.map(d => d.device_key || d.id);
+  }
+
   listContainer.innerHTML = ""; 
 
   const currentLang = (document.getElementById('language-select')?.value || 'en').toLowerCase();
-  const dict = (languages && languages[currentLang]) ? languages[currentLang] : null;
+  const dict = (window.languages && window.languages[currentLang]) ? window.languages[currentLang] : null;
   
   const tempLabel = dict?.tempLabel || "Temp";
   const doorLabel = dict?.doorLabel || "Door";
-  const unknownText = "Unknown";
+  const offlineText = dict?.offlineBadge || "Offline"; // settings.js ထဲက offline စာသားကို ယူသုံးခြင်း
 
   deviceKeys.forEach(devId => {
+    // ထို device ရဲ့ နောက်ဆုံးရ log ဒေတာ ရှိမရှိ ရှာမယ်
     const devData = data.find(item => getDevId(item) === devId);
-    if (!devData) return;
     
-    const isOpen = devData.door_status === "Open";
-    const statusColor = isOpen ? "#ff6384" : "#4bc0c0";
+    // ဒေတာ ရှိရင် မူရင်းအတိုင်းပြမယ်၊ မရှိရင် Offline State ပြမယ်
+    const isOpen = devData ? devData.door_status === "Open" : false;
+    // Offline ဖြစ်နေရင် မီးခိုးရောင် (#6c757d) ပြမယ်
+    const statusColor = devData ? (isOpen ? "#ff6384" : "#4bc0c0") : "#6c757d";
 
     const liftCard = document.createElement('div');
     liftCard.style = `
@@ -68,21 +86,23 @@ function renderElevatorList(data) {
       border-radius: 6px;
       box-shadow: 0 4px 6px rgba(0,0,0,0.1);
       transition: all 0.2s ease;
+      opacity: ${devData ? '1' : '0.6'}; /* Offline ဖြစ်နေရင် မှိန်ပြထားမယ် */
     `;
     
-    const tempVal = (devData.temperature && devData.temperature > 0) ? devData.temperature.toFixed(1) + "°C" : "--°C";
+    const tempVal = (devData && devData.temperature && devData.temperature > 0) ? devData.temperature.toFixed(1) + "°C" : "--°C";
+    const doorStatusText = devData ? (devData.door_status || "Unknown") : offlineText;
     
     liftCard.innerHTML = `
       <h4 style="margin:0 0 5px 0; color:#01919d; font-size:1.1rem;">${devId.toUpperCase()}</h4>
       <p style="margin:3px 0; font-size:0.9rem;">${tempLabel}: <b>${tempVal}</b></p>
-      <p style="margin:3px 0; font-size:0.9rem;">${doorLabel}: <span style="color:${statusColor}; font-weight:bold;">${devData.door_status || unknownText}</span></p>
+      <p style="margin:3px 0; font-size:0.9rem;">${doorLabel}: <span style="color:${statusColor}; font-weight:bold;">${doorStatusText}</span></p>
     `;
     
     liftCard.onclick = () => {
       const deviceSelect = document.getElementById('device-select');
       if (deviceSelect) {
         deviceSelect.value = devId;
-        applyFiltersAndRender();
+        if (typeof applyFiltersAndRender === 'function') applyFiltersAndRender();
       }
     };
 
