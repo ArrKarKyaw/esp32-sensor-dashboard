@@ -1,454 +1,242 @@
 <!DOCTYPE html>
-
 <html lang="en">
-
   <head>
-
     <meta charset="UTF-8" />
-
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-
-    <title>Elevator Information Dashboard</title>
-
+    <!-- Browser Tab Title ကိုပါ i18n ချိတ်ဆက်နိုင်ရန် ID သတ်မှတ်ထားခြင်း -->
+    <title id="main-title" data-i18n="mainTitle">Elevator Information Dashboard</title>
     <link rel="stylesheet" href="./styles.css" />
-
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
   </head>
-
   <body>
-
     <div class="app-shell">
-
       <header class="topbar">
-
-        <h1 id="app-title">Elevator Information Dashboard</h1>
-
+        <!-- Dashboard Title -->
+        <h1 id="app-title" data-i18n="appTitle">Elevator Information Dashboard</h1>
         <div id="user-actions" class="user-actions hidden">
-
           <span id="username-label"></span>
-
-          <button id="settings-button" class="button button-utility hidden">Settings</button>
-
-          <button id="logout-button" class="button button-utility">Logout</button>
-
+          <button id="settings-button" class="button button-utility hidden" data-i18n="settingsBtn">Settings</button>
+          <button id="logout-button" class="button button-utility" data-i18n="logoutBtn">Logout</button>
         </div>
-
         <div class="toolbar-controls">
-
           <button id="theme-toggle" class="button button-utility">Light</button>
-
           <select id="language-select" class="button-select">
-
             <option value="en">EN</option>
-
             <option value="th">TH</option>
-
             <option value="my">MY</option>
-
             <option value="zh">ZH</option>
-
             <option value="vi">VI</option>
-
           </select>
-
         </div>
-
       </header>
 
-
-
       <main>
-
+        <!-- 🔐 1. LOGIN VIEW SECTION -->
         <section id="login-view" class="login-page centered-card">
-
           <div class="login-card card">
-
             <div class="login-panel">
-
               <div class="login-illustration">
-
                 <div class="illustration-graphic">
-
                   <img src="images/elevator.png" alt="Elevator illustration" class="login-image" />
-
                 </div>
-
-                <h2>Elevator Monitoring</h2>
-
-                <p class="info-text">Access your elevator status, history, and device controls through a secure dashboard.</p>
-
+                <h2 data-i18n="loginMonitoring">Elevator Monitoring</h2>
+                <p class="info-text" data-i18n="loginDesc">Access your elevator status, history, and device controls through a secure dashboard.</p>
               </div>
-
               <div class="login-form-area">
-
-                <h2 id="login-title">Sign in</h2>
-
-                <p id="login-info" class="info-text">Enter your credentials to continue.</p>
-
+                <h2 id="login-title" data-i18n="signIn">Sign in</h2>
+                <p id="login-info" class="info-text" data-i18n="enterCredentials">Enter your credentials to continue.</p>
                 <form id="login-form" onsubmit="event.preventDefault();">    
-
                   <label>
-
-                    Username
-
+                    <span data-i18n="usernameLabel">Username</span>
                     <input name="username" id="username" type="text" placeholder="" required />
-
                   </label>
-
                   <label>
-
-                    Password
-
+                    <span data-i18n="passwordLabel">Password</span>
                     <input name="password" id="password" type="password" placeholder="" required />
-
                   </label>
-
-                  <button type="submit" id="login-button" class="button button-primary">Login</button>
-
+                  <button type="submit" id="login-button" class="button button-primary" data-i18n="loginBtn">Login</button>
                 </form>
-
                 <div id="login-error" class="error-text hidden"></div>
-
               </div>
-
             </div>
-
           </div>
-
         </section>
 
-
-
+        <!-- 📊 2. DASHBOARD VIEW SECTION -->
         <section id="dashboard-view" class="hidden">
-
-         
-
+          
+          <!-- Active Elevator Nodes List -->
           <div class="card lift-list-card" style="margin-bottom: 20px;">
-
-            <h3 style="color: #01919d; margin-top: 0; margin-bottom: 10px;">Active Elevators Status (Multi-ESP32 Nodes)</h3>
-
+            <h3 style="color: #01919d; margin-top: 0; margin-bottom: 10px;" data-i18n="activeLiftsTitle">Active Elevators Status (Multi-ESP32 Nodes)</h3>
             <div id="lift-status-list" style="display: flex; gap: 12px; flex-wrap: wrap;">
-
-              <p class="info-text" style="color: #aaa; margin: 0;">Detecting active elevator ESP32 units...</p>
-
+              <p class="info-text" style="color: #aaa; margin: 0;" data-i18n="detectingNodes">Detecting active elevator ESP32 units...</p>
             </div>
-
           </div>
 
-
-
+          <!-- Sensors Dynamic Value Grid -->
           <div class="dashboard-grid">
-
             <div class="card stat-card">
-
-              <h3>Temperature</h3>
-
+              <h3 data-i18n="tempLabel">Temperature</h3>
               <p id="temperature-value">-- °C</p>
-
             </div>
-
             <div class="card stat-card">
-
-              <h3>Humidity</h3>
-
+              <h3 data-i18n="humLabel">Humidity</h3>
               <p id="humidity-value">-- %</p>
-
             </div>
-
             <div class="card stat-card">
-
-              <h3>Pressure</h3>
-
+              <h3 data-i18n="pressLabel">Pressure</h3>
               <p id="pressure-value">-- hPa</p>
-
             </div>
-
-           
-
+            
             <div class="card stat-card">
-
-              <h3>Door Status</h3>
-
+              <h3 data-i18n="doorLabel">Door Status</h3>
               <p id="door-status-value" style="font-weight: bold; color: #01919d;">--</p>
-
             </div>
-
-
 
             <div class="card stat-card" style="grid-column: span 2;">
-
-              <h3>Vibration / Real-time Motion (X, Y, Z Axis)</h3>
-
+              <h3 data-i18n="vibrationLabel">Vibration / Real-time Motion (X, Y, Z Axis)</h3>
               <p id="vibration-value" style="font-size: 1.1rem; line-height: 1.6; margin: 10px 0 0 0;">X: -- | Y: -- | Z: --</p>
-
             </div>
-
-
 
             <div class="card stat-card">
-
-              <h3>Latest Device Connection</h3>
-
-              <p id="other-value">No data yet</p>
-
+              <h3 data-i18n="latestConnectionLabel">Latest Device Connection</h3>
+              <p id="other-value" data-i18n="noDataYet">No data yet</p>
             </div>
-
           </div>
 
-
-
+          <!-- Filter & Export Area -->
           <div class="card filter-card">
-
-            <h2 id="filter-heading">Filter history</h2>
-
+            <h2 id="filter-heading" data-i18n="filterHeading">Filter history</h2>
             <div class="filter-row">
-
               <label>
-
-                Start
-
+                <span data-i18n="startLabel">Start</span>
                 <input id="start-date" type="date" />
-
               </label>
-
               <label>
-
-                End
-
+                <span data-i18n="endLabel">End</span>
                 <input id="end-date" type="date" />
-
               </label>
-
               <label>
-
-                Device
-
+                <span data-i18n="deviceLabel">Device</span>
                 <select id="device-select">
-
                   <option value="">All devices</option>
-
                 </select>
-
               </label>
-
               <button id="filter-button" class="button button-primary" data-i18n="applyButton">Apply</button>
-
             </div>
-
-           
-
+            
             <div class="action-row" style="margin-top: 15px; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 15px;">
-
               <button id="export-csv" class="button button-secondary" style="background-color: #01919d; color: white;" data-i18n="exportCsv">📥 Download CSV (Excel)</button>
-
               <button id="export-json" class="button button-secondary" style="background-color: #36a2eb; color: white;" data-i18n="exportJson">📥 Download JSON</button>
-
             </div>
-
           </div>
 
-
-
+          <!-- Chart Area -->
           <div class="card chart-card">
-
-            <h2 id="chart-heading">Sensor history</h2>
-
+            <h2 id="chart-heading" data-i18n="chartHeading">Sensor history</h2>
             <canvas id="history-chart" height="220"></canvas>
-
           </div>
-
         </section>
 
-
-
+        <!-- ⚙️ 3. ADMIN SETTINGS SECTION -->
         <section id="settings-view" class="hidden">
-
           <div class="settings-header">
-
-            <button type="button" id="settings-back-button" class="button button-utility">Back to Dashboard</button>
-
+            <button type="button" id="settings-back-button" class="button button-utility" data-i18n="backToDashboard">Back to Dashboard</button>
           </div>
-
+          
+          <!-- User Accounts Creation -->
           <div class="card settings-card">
-
-            <h2 id="settings-heading">Admin Settings</h2>
-
-            <p id="settings-info" class="info-text">Create accounts and manage roles for admin, manager, and user access.</p>
-
+            <h2 id="settings-heading" data-i18n="adminSettingsHeading">Admin Settings</h2>
+            <p id="settings-info" class="info-text" data-i18n="adminSettingsInfo">Create accounts and manage roles for admin, manager, and user access.</p>
             <form id="create-user-form">
-
               <label>
-
-                Email (optional for local DB, required for Supabase)
-
+                <span data-i18n="emailLabel">Email (optional for local DB, required for Supabase)</span>
                 <input name="email" id="new-email" type="email" />
-
               </label>
-
               <label>
-
-                Username
-
+                <span data-i18n="usernameLabel">Username</span>
                 <input name="username" id="new-username" type="text" required />
-
               </label>
-
               <label>
-
-                Password
-
+                <span data-i18n="passwordLabel">Password</span>
                 <input name="password" id="new-password" type="password" required />
-
               </label>
-
               <label>
-
-                Role
-
+                <span data-i18n="roleLabel">Role</span>
                 <select name="role" id="new-role" required>
-
-                  <option value="admin">Admin</option>
-
-                  <option value="manager">Manager</option>
-
-                  <option value="user" selected>User</option>
-
+                  <option value="admin" data-i18n="roleAdmin">Admin</option>
+                  <option value="manager" data-i18n="roleManager">Manager</option>
+                  <option value="user" data-i18n="roleUser" selected>User</option>
                 </select>
-
               </label>
-
-              <button type="submit" id="create-account-button" class="button button-primary">Create Account</button>
-
+              <button type="submit" id="create-account-button" class="button button-primary" data-i18n="createAccountBtn">Create Account</button>
             </form>
-
             <div id="settings-error" class="error-text hidden"></div>
-
           </div>
 
-
-
+          <!-- Device Registration Settings -->
           <div class="card settings-card">
-
-            <h2>ESP32 Device Settings</h2>
-
-            <p class="info-text">Register or rename ESP32 devices, and track status from each unit.</p>
-
+            <h2 data-i18n="deviceSettingsHeading">ESP32 Device Settings</h2>
+            <p class="info-text" data-i18n="deviceSettingsInfo">Register or rename ESP32 devices, and track status from each unit.</p>
             <form id="create-device-form">
-
               <label>
-
-                Device Key
-
+                <span data-i18n="deviceKeyLabel">Device Key</span>
                 <input name="deviceKey" id="new-device-key" type="text" placeholder="esp32-01" required />
-
               </label>
-
               <label>
-
-                Device Name
-
+                <span data-i18n="deviceNameLabel">Device Name</span>
                 <input name="name" id="new-device-name" type="text" placeholder="Main Lobby Sensor" required />
-
               </label>
-
-              <button type="submit" class="button button-primary">Create Device</button>
-
+              <button type="submit" class="button button-primary" data-i18n="createDeviceBtn">Create Device</button>
             </form>
-
             <div id="device-error" class="error-text hidden"></div>
-
           </div>
 
-
-
+          <!-- Device Table -->
           <div class="card settings-card">
-
-            <h2>Registered ESP32 Devices</h2>
-
+            <h2 data-i18n="registeredDevicesHeading">Registered ESP32 Devices</h2>
             <table class="device-table">
-
               <thead>
-
                 <tr>
-
-                  <th>ID</th>
-
-                  <th>Key</th>
-
-                  <th>Name</th>
-
-                  <th>Last Seen</th>
-
-                  <th>Temp</th>
-
-                  <th>Hum</th>
-
-                  <th>Pressure</th>
-
-                  <th>Actions</th>
-
+                  <th data-i18n="thId">ID</th>
+                  <th data-i18n="thKey">Key</th>
+                  <th data-i18n="thName">Name</th>
+                  <th data-i18n="thLastSeen">Last Seen</th>
+                  <th data-i18n="thTemp">Temp</th>
+                  <th data-i18n="thHum">Hum</th>
+                  <th data-i18n="thPress">Pressure</th>
+                  <th data-i18n="thActions">Actions</th>
                 </tr>
-
               </thead>
-
               <tbody id="devices-table-body"></tbody>
-
             </table>
-
           </div>
 
-
-
+          <!-- Account Table -->
           <div class="card settings-card">
-
-            <h2>Existing accounts</h2>
-
+            <h2 data-i18n="existingAccountsHeading">Existing accounts</h2>
             <table class="user-table">
-
               <thead>
-
                 <tr>
-
-                  <th>ID</th>
-
-                  <th>Username</th>
-
-                  <th>Role</th>
-
-                  <th>Actions</th>
-
+                  <th data-i18n="thId">ID</th>
+                  <th data-i18n="thUsername">Username</th>
+                  <th data-i18n="thRole">Role</th>
+                  <th data-i18n="thActions">Actions</th>
                 </tr>
-
               </thead>
-
               <tbody id="users-table-body"></tbody>
-
             </table>
-
           </div>
-
         </section>
-
       </main>
-
     </div>
 
-<!-- ခွဲထုတ်ထားသော Script ဖိုင်အသစ်များ (Version Control ပါဝင်သည်) -->
-
-  <script src="./auth.js?v=999"></script>
-
-  <script src="./export.js?v=1001"></script>
-
-  <script src="./settings.js?v=999"></script>
-
- 
-
-  <!-- မူရင်း Main Script ဖိုင် -->
-
-  <script src="./script.js?v=999"></script>
-
-</body>
-
-</html> 
-
+    <!-- External Script Files Dependencies -->
+    <script src="./auth.js?v=999"></script>
+    <script src="./export.js?v=1001"></script>
+    <script src="./settings.js?v=999"></script>
+    
+    <!-- Main Script File (i18n Engine Inside) -->
+    <script src="./script.js?v=999"></script>
+  </body>
+</html>

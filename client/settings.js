@@ -7,7 +7,7 @@ window.loadSettingsData = async function() {
   // လက်ရှိရွေးချယ်ထားသော ဘာသာစကားကုဒ်ကို ရယူခြင်း (Table တွင်းစာသားများအတွက်)
   const currentLang = document.getElementById('language-select')?.value || 'en';
   
-  // Dynamic Table UI စာသားများ သတ်မှတ်ခြင်း
+  // Dynamic Table UI စာသားများ သတ်မှတ်ခြင်း (script.js ရှိ global getTranslation နှင့် တိုက်ရိုက်ချိတ်ဆက်)
   const deleteBtnText = getTranslation('deleteBtn', currentLang);
   const onlineText = getTranslation('onlineBadge', currentLang);
   const offlineText = getTranslation('offlineBadge', currentLang);
@@ -15,7 +15,8 @@ window.loadSettingsData = async function() {
   const neverText = getTranslation('neverSeen', currentLang);
 
   try {
-    const resUsers = await fetch('/api/users', { headers: { 'Authorization': `Bearer ${token}` } });
+    // Vercel Path Error မတက်စေရန် Relative Path ပြောင်းလဲခြင်း
+    const resUsers = await fetch('api/users', { headers: { 'Authorization': `Bearer ${token}` } });
     if (resUsers.ok) {
       const users = await resUsers.json();
       if(usersTableBody) {
@@ -36,7 +37,8 @@ window.loadSettingsData = async function() {
   } catch (err) { console.error("Error loading users:", err); }
 
   try {
-    const resLogs = await fetch('/api/get-sensor');
+    // Vercel Path Error မတက်စေရန် Relative Path ပြောင်းလဲခြင်း
+    const resLogs = await fetch('api/get-sensor');
     let activeDeviceIds = [];
     if (resLogs.ok) {
       const logs = await resLogs.json();
@@ -46,7 +48,8 @@ window.loadSettingsData = async function() {
         .map(log => log.device_id || log.ce_id || '');
     }
 
-    const resDevices = await fetch('/api/devices', { headers: { 'Authorization': `Bearer ${token}` } });
+    // Vercel Path Error မတက်စေရန် Relative Path ပြောင်းလဲခြင်း
+    const resDevices = await fetch('api/devices', { headers: { 'Authorization': `Bearer ${token}` } });
     if (resDevices.ok) {
       const devices = await resDevices.json();
       if(devicesTableBody) {
@@ -93,7 +96,7 @@ window.initSettingsEvents = function() {
       const currentLang = document.getElementById('language-select')?.value || 'en';
 
       try {
-        const response = await fetch('/api/users', {
+        const response = await fetch('api/users', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
           body: JSON.stringify({ username, password, role })
@@ -121,7 +124,7 @@ window.initSettingsEvents = function() {
       const currentLang = document.getElementById('language-select')?.value || 'en';
 
       try {
-        const response = await fetch('/api/devices', {
+        const response = await fetch('api/devices', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
           body: JSON.stringify({ deviceKey, name })
@@ -145,7 +148,7 @@ window.deleteUser = async (id) => {
   const currentLang = document.getElementById('language-select')?.value || 'en';
   if(!confirm(getTranslation('confirmDeleteUser', currentLang))) return;
   const token = localStorage.getItem('token');
-  await fetch(`/api/users?id=${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
+  await fetch(`api/users?id=${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
   window.loadSettingsData();
 };
 
@@ -153,7 +156,7 @@ window.deleteDevice = async (id) => {
   const currentLang = document.getElementById('language-select')?.value || 'en';
   if(!confirm(getTranslation('confirmDeleteDevice', currentLang))) return;
   const token = localStorage.getItem('token');
-  await fetch(`/api/devices?id=${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
+  await fetch(`api/devices?id=${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
   window.loadSettingsData();
 };
 
@@ -167,7 +170,7 @@ const internalSettingsDictionary = {
   my: {
     deleteBtn: "ပယ်ဖျက်ရန်", onlineBadge: "အွန်လိုင်း", offlineBadge: "အော့ဖ်လိုင်း", unnamedSensor: "အမည်မသိ ဆင်ဆာ", neverSeen: "မရှိသေးပါ",
     userSuccess: "အကောင့်အသစ် အောင်မြင်စွာ တည်ဆောက်ပြီးပါပြီ။", deviceSuccess: "ESP32 စက်ပစ္စည်း အောင်မြင်စွာ မှတ်ပုံတင်ပြီးပါပြီ။",
-    confirmDeleteUser: "ဤအသုံးပြုသူအကောင့်ကို ဖျက်ရန် သေချာပါသလား။", confirmDeleteDevice: "ဤ ESP32 စက်ပစ္စည်းကို ဖျက်ရန် သေချာပါသလား။"
+    confirmDeleteUser: "ဤအသုံးပြုသူအကောင့်ကို ဖျက်ရန် သေသာပါသလား။", confirmDeleteDevice: "ဤ ESP32 စက်ပစ္စည်းကို ဖျက်ရန် သေချာပါသလား။"
   },
   th: {
     deleteBtn: "ลบ", onlineBadge: "ออนไลน์", offlineBadge: "ออฟไลน์", unnamedSensor: "เซ็นเซอร์ไม่มีชื่อ", neverSeen: "ไม่เคย",
@@ -186,10 +189,21 @@ const internalSettingsDictionary = {
   }
 };
 
-// Helper function to fetch internal translations easily
+// 🌍 Global window.languages (language.json) သို့မဟုတ် Local Backup Dictionary ထံမှ စာသားရယူသော Function
 function getTranslation(key, lang) {
-  const targetLang = internalSettingsDictionary[lang] || internalSettingsDictionary['en'];
-  return targetLang[key] || internalSettingsDictionary['en'][key];
+  const targetLang = lang.toLowerCase();
+  
+  // 1. script.js က Fetch လုပ်ထားတဲ့ Centralized window.languages Dictionary ထဲမှာ ရှာဖတ်ခြင်း
+  if (window.languages && window.languages[targetLang] && window.languages[targetLang][key]) {
+    return window.languages[targetLang][key];
+  }
+  if (window.languages && window.languages['en'] && window.languages['en'][key]) {
+    return window.languages['en'][key];
+  }
+  
+  // 2. သတ်မှတ်ထားသော JSON data မတွေ့ပါက မူရင်း internal settings dictionary ထံမှ ဖတ်ခြင်း
+  const backupLang = internalSettingsDictionary[targetLang] || internalSettingsDictionary['en'];
+  return backupLang[key] || internalSettingsDictionary['en'][key];
 }
 
 // 🔐 Static Text Elements i18n Sync (For Table Headers & Form Static Labels)
@@ -232,7 +246,7 @@ const staticSettingsLanguages = {
 };
 
 window.addEventListener('languageChanged', (e) => {
-  const lang = e.detail.lang.toLowerCase(); // 'EN' -> 'en'
+  const lang = e.detail.lang.toLowerCase(); 
   const dict = staticSettingsLanguages[lang];
   if (!dict) return;
 
@@ -247,7 +261,6 @@ window.addEventListener('languageChanged', (e) => {
       else if (text.includes('name')) th.textContent = dict.thName;
       else if (text.includes('last seen')) th.textContent = dict.thLastSeen;
       else if (text.includes('status') || text.includes('temp') || text.includes('hum') || text.includes('pressure')) {
-        // dynamic placeholders inside original headings fallback
         if(text === 'status') th.textContent = dict.thStatus;
       }
       else if (text.includes('action')) th.textContent = dict.thActions;

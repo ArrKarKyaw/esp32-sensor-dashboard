@@ -44,6 +44,14 @@ function renderElevatorList(data) {
   const deviceKeys = [...new Set(data.map(item => getDevId(item)).filter(Boolean))];
   listContainer.innerHTML = ""; 
 
+  // လက်ရှိ ရွေးချယ်ထားသော ဘာသာစကားအတိုင်း Dynamic စာသားများ ရယူရန်
+  const currentLang = (document.getElementById('language-select')?.value || 'en').toLowerCase();
+  const dict = (languages && languages[currentLang]) ? languages[currentLang] : null;
+  
+  const tempLabel = dict?.tempLabel || "Temp";
+  const doorLabel = dict?.doorLabel || "Door";
+  const unknownText = "Unknown";
+
   deviceKeys.forEach(devId => {
     const devData = data.find(item => getDevId(item) === devId);
     if (!devData) return;
@@ -67,8 +75,8 @@ function renderElevatorList(data) {
     
     liftCard.innerHTML = `
       <h4 style="margin:0 0 5px 0; color:#01919d; font-size:1.1rem;">${devId.toUpperCase()}</h4>
-      <p style="margin:3px 0; font-size:0.9rem;">Temp: <b>${tempVal}</b></p>
-      <p style="margin:3px 0; font-size:0.9rem;">Door: <span style="color:${statusColor}; font-weight:bold;">${devData.door_status || 'Unknown'}</span></p>
+      <p style="margin:3px 0; font-size:0.9rem;">${tempLabel}: <b>${tempVal}</b></p>
+      <p style="margin:3px 0; font-size:0.9rem;">${doorLabel}: <span style="color:${statusColor}; font-weight:bold;">${devData.door_status || unknownText}</span></p>
     `;
     
     liftCard.onclick = () => {
@@ -88,7 +96,6 @@ function updateDeviceSelectOptions(data) {
   if (!deviceSelect) return;
   const currentSelected = deviceSelect.value;
   
-  // JSON ထဲက ဘာသာစကားအလိုက် "All devices" စာသားပြောင်းရန် (JSON မ‌ရောက်သေးရင် fallback သုံးမယ်)
   const currentLang = (document.getElementById('language-select')?.value || 'en').toLowerCase();
   const allDevicesText = (languages && languages[currentLang]) ? languages[currentLang].allDevices : "All devices";
   
@@ -118,11 +125,18 @@ function updateHistoryChart(deviceId, sensorLogs) {
     window.historyChart = null;
   }
 
+  // Chart Labels များကိုပါ ဘာသာစကားအလိုက် Dynamic ပြောင်းလဲရန်
+  const currentLang = (document.getElementById('language-select')?.value || 'en').toLowerCase();
+  const dict = (languages && languages[currentLang]) ? languages[currentLang] : null;
+  
+  const labelTemp = (dict?.tempLabel || 'Temperature') + ' (°C)';
+  const labelHum = (dict?.humLabel || 'Humidity') + ' (%)';
+
   let datasets = [];
   if (deviceId === 'lift-01' || deviceId === 'lift-03') {
     datasets = [
-      { label: 'Temperature (°C)', data: reversedLogs.map(log => log.temperature || null), borderColor: '#ff6384', borderWidth: 2, tension: 0.2 },
-      { label: 'Humidity (%)', data: reversedLogs.map(log => log.humidity || null), borderColor: '#36a2eb', borderWidth: 2, tension: 0.2 }
+      { label: labelTemp, data: reversedLogs.map(log => log.temperature || null), borderColor: '#ff6384', borderWidth: 2, tension: 0.2 },
+      { label: labelHum, data: reversedLogs.map(log => log.humidity || null), borderColor: '#36a2eb', borderWidth: 2, tension: 0.2 }
     ];
   } else if (deviceId === 'lift-02') {
     datasets = [
@@ -172,6 +186,9 @@ function applyFiltersAndRender() {
     });
   }
 
+  const currentLang = (document.getElementById('language-select')?.value || 'en').toLowerCase();
+  const dict = (languages && languages[currentLang]) ? languages[currentLang] : null;
+
   if (filteredData.length > 0) {
     const latest = filteredData[0];
 
@@ -203,7 +220,8 @@ function applyFiltersAndRender() {
   } else {
     resetUIElements();
     if (document.getElementById('other-value')) {
-      document.getElementById('other-value').innerText = "No data found for the selected date range.";
+      // JSON ထဲတွင် သတ်မှတ်ထားသော ဒေတာမရှိသည့်စာသားကို သုံးရန်
+      document.getElementById('other-value').innerText = dict?.noDataYet || "No data found for the selected date range.";
     }
   }
 }
@@ -291,9 +309,8 @@ window.addEventListener('DOMContentLoaded', async () => {
   const langSelect = document.getElementById('language-select') || document.getElementById('lang-select') || document.querySelector('select:not([id="device-select"])');
   
   const changeLanguageSystem = (selectedLangCode) => {
-    if (!languages) return; // JSON ဒေတာမရောက်သေးရင် ခေတ္တစောင့်မယ်
+    if (!languages) return; 
     
-    // language.json ထဲက key တွေကအသေး (en, my, th, zh, vi) ဖြစ်လို့ .toLowerCase() သုံးရပါမယ်
     const code = selectedLangCode.toLowerCase();
     const dict = languages[code];
     if (!dict) return;
@@ -303,7 +320,7 @@ window.addEventListener('DOMContentLoaded', async () => {
       const key = el.getAttribute('data-i18n');
       if (dict[key]) {
         if (el.id === 'export-csv' || el.id === 'export-json') {
-          el.textContent = `📥 ${dict[key]}`; // Icon လေးတွေထိန်းသိမ်းပေးထားပါတယ်
+          el.textContent = `📥 ${dict[key]}`; 
         } else {
           el.textContent = dict[key];
         }
@@ -324,23 +341,22 @@ window.addEventListener('DOMContentLoaded', async () => {
     // Page Refresh ဖြစ်လည်း ရွေးထားတာ မပျောက်သွားအောင် သိမ်းထားခြင်း
     localStorage.setItem('selectedLanguage', code);
 
-    // 📢 settings.js နှင့် auth.js တို့ဆီသို့ သတင်းပေးပို့ရန် Event ထုတ်လွှင့်ခြင်း (.toUpperCase() နဲ့ ညှိပြီး ပို့ပေးထားပါတယ်)
+    // 📢 settings.js နှင့် auth.js တို့ဆီသို့ သတင်းပေးပို့ရန် Event ထုတ်လွှင့်ခြင်း
     window.dispatchEvent(new CustomEvent('languageChanged', { detail: { lang: code.toUpperCase() } }));
   };
 
-  // 📥 language.json ဖိုင်ကို လှမ်းဖတ်ယူခြင်း (Async Fetch)
+  // 📥 language.json ဖိုင်ကို လှမ်းဖတ်ယူခြင်း (Vercel Client Folder လမ်းကြောင်းအတိုင်း ပြင်ဆင်ပြီး)
   try {
-    const langResponse = await fetch('/language.json'); // path ကို လိုအပ်သလို ပြောင်းနိုင်ပါတယ် (ဥပမာ- ./language.json)
+    // Relative Path ('language.json') သုံးမှ client ဖိုဒါထဲက ဖိုင်ကို Vercel ပေါ်မှာ 404 မတက်ဘဲ အမှန်ကန်ဆုံး ဖတ်ယူနိုင်ပါလိမ့်မယ်။
+    const langResponse = await fetch('language.json?cache_bust=' + Date.now()); 
     if (!langResponse.ok) throw new Error("language.json loading failed");
     languages = await langResponse.json();
 
     if (langSelect) {
-      // Dropdown value ပြောင်းလဲချိန်မှာ အလုပ်လုပ်စေရန် binding လုပ်ခြင်း
       langSelect.addEventListener('change', (e) => {
         changeLanguageSystem(e.target.value);
       });
 
-      // ယခင်သိမ်းဆည်းထားဖူးသော ဘာသာစကား သို့မဟုတ် လက်ရှိ Dropdown ဖြစ်စေ Default 'en' ဖြင့်စတင်ရန်
       const savedLang = localStorage.getItem('selectedLanguage') || langSelect.value || 'en';
       langSelect.value = savedLang.toLowerCase();
       changeLanguageSystem(savedLang);
