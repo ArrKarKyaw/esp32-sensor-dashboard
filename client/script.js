@@ -309,6 +309,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   const langSelect = document.getElementById('language-select') || document.getElementById('lang-select') || document.querySelector('select:not([id="device-select"])');
   
   const changeLanguageSystem = (selectedLangCode) => {
+    const languages = window.languages
     if (!languages) return; 
     
     const code = selectedLangCode.toLowerCase();
