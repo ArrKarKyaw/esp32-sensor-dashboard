@@ -9,19 +9,64 @@ window.usernameLabel = document.getElementById('username-label');
 window.logoutButton = document.getElementById('logout-button');
 window.settingsButton = document.getElementById('settings-button');
 
+// 🔐 Local Backup Dictionary (language.json မတက်လာပါက အရန်သုံးရန်)
+const internalAuthDictionary = {
+  en: {
+    loginFailed: "Login failed. Please check your credentials.",
+    userGreeting: "Hello"
+  },
+  my: {
+    loginFailed: "အကောင့်ဝင်ရောက်ခြင်း မအောင်မြင်ပါ။ အသုံးပြုသူအမည်နှင့် လျှို့ဝှက်နံပါတ်ကို ပြန်စစ်ပါ။",
+    userGreeting: "မင်္ဂလာပါ"
+  },
+  th: {
+    loginFailed: "การเข้าสู่ระบบล้มเหลว กรุณาตรวจสอบข้อมูลของคุณ",
+    userGreeting: "สวัสดี"
+  },
+  zh: {
+    loginFailed: "登录失败。请检查您的凭据。",
+    userGreeting: "你好"
+  },
+  vi: {
+    loginFailed: "Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin.",
+    userGreeting: "Xin chào"
+  }
+};
+
+// 🌍 Centralized Auth Translation Helper
+function getAuthTranslation(key, lang) {
+  const targetLang = lang.toLowerCase();
+  
+  // 1. script.js ၏ Centralized window.languages ထဲတွင် ရှာဖတ်ခြင်း
+  if (window.languages && window.languages[targetLang] && window.languages[targetLang][key]) {
+    return window.languages[targetLang][key];
+  }
+  if (window.languages && window.languages['en'] && window.languages['en'][key]) {
+    return window.languages['en'][key];
+  }
+  
+  // 2. Backup Dictionary ထံမှ ဖတ်ခြင်း
+  const backupLang = internalAuthDictionary[targetLang] || internalAuthDictionary['en'];
+  return backupLang[key] || internalAuthDictionary['en'][key];
+}
+
 // 🔐 HANDLE LOGIN SYSTEM
 if (window.loginForm) {
   window.loginForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     const username = document.getElementById('username').value.trim();
     const password = document.getElementById('password').value;
+    const currentLang = document.getElementById('language-select')?.value || 'en';
+    
     try {
-      const response = await fetch('/api/login', {
+      // Vercel Path Safe: api/login
+      const response = await fetch('api/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password })
       });
-      if (!response.ok) throw new Error('Login failed');
+      
+      if (!response.ok) throw new Error('loginFailed');
    
       const data = await response.json();
       localStorage.setItem('token', data.token);
@@ -30,7 +75,8 @@ if (window.loginForm) {
       window.showDashboard();
     } catch (err) {
       if (window.loginError) { 
-        window.loginError.textContent = err.message; 
+        window.loginError.textContent = getAuthTranslation('loginFailed', currentLang);
+        window.loginError.style.color = "#dc3545";
         window.loginError.classList.remove('hidden'); 
       }
     }
@@ -43,7 +89,6 @@ window.showDashboard = function() {
   if (window.dashboardView) window.dashboardView.classList.remove('hidden');
   if (window.userActions) window.userActions.classList.remove('hidden');
   
-  // ဘာသာစကားအလိုက် ပြောင်းလဲပေးနိုင်ရန် မူရင်း String ပုံစံကို i18n helper ဖြင့် လိုက်လျောညီထွေဖြစ်အောင် ပြောင်းလဲခြင်း
   updateUserGreeting();
   
   const userRole = localStorage.getItem('role');
@@ -64,8 +109,7 @@ if (window.logoutButton) {
 }
 
 /**
- * အကောင့်ဝင်ထားသူ၏ အမည်ကို လက်ရှိရွေးချယ်ထားသော ဘာသာစကားအလိုက် 
- * နှုတ်ခွန်းဆက်စာသား (ဥပမာ - Hello, admin / မင်္ဂလာပါ admin) ပြောင်းလဲပေးသည့် Helper function
+ * အကောင့်ဝင်ထားသူ၏ အမည်ကို လက်ရှိရွေးချယ်ထားသော ဘာသာစကားအလိုက် ပြောင်းလဲပေးသည့် Helper function
  */
 function updateUserGreeting() {
   if (!window.usernameLabel) return;
@@ -73,19 +117,32 @@ function updateUserGreeting() {
   if (!username) return;
 
   const currentLang = document.getElementById('language-select')?.value || 'en';
+  const greetingText = getAuthTranslation('userGreeting', currentLang);
   
-  // ဘာသာစကားအလိုက် 'Hello' သို့မဟုတ် 'မင်္ဂလာပါ' ခွဲခြားသတ်မှတ်ခြင်း
-  let greeting = 'Hello';
-  if (currentLang === 'my') greeting = 'မင်္ဂလာပါ';
-  else if (currentLang === 'th') greeting = 'สวัสดี';
-  else if (currentLang === 'zh') greeting = '你好';
-  else if (currentLang === 'vi') greeting = 'Xin chào';
-
-  window.usernameLabel.textContent = `${greeting}, ${username}`;
+  window.usernameLabel.textContent = `${greetingText}, ${username}`;
 }
 
 // 🔐 Language Changed Event Listener 
-// language-select ပြောင်းလိုက်တဲ့အခါ User Greeting ပါ လိုက်ပြောင်းပေးရန် ချိတ်ဆက်ခြင်း
+// ဘာသာစကားပြောင်းလိုက်လျှင် Login UI စာသားများနှင့် Error message များကို တစ်ပြိုင်နက် Live Translate လုပ်ပေးရန်
 window.addEventListener('languageChanged', (e) => {
+  const currentLang = e.detail.lang.toLowerCase();
+  
+  // 1. User Greeting ကို Live-update လုပ်ခြင်း
   updateUserGreeting();
+  
+  // 2. ပြသနေဆဲ Login Error စာသားရှိပါက ချက်ချင်းဘာသာပြန်ပေးခြင်း
+  if (window.loginError && !window.loginError.classList.contains('hidden')) {
+    window.loginError.textContent = getAuthTranslation('loginFailed', currentLang);
+  }
+
+  // 3. index.html ရှိ Auth ဆိုင်ရာ static elements (ဥပမာ [data-i18n]) ကို ဗဟိုစနစ်ဖြင့် ဘာသာပြန်ခြင်း
+  if (window.languages && window.languages[currentLang]) {
+    const dict = window.languages[currentLang];
+    document.querySelectorAll('#login-view [data-i18n], #user-actions [data-i18n]').forEach(el => {
+      const key = el.getAttribute('data-i18n');
+      if (dict[key]) {
+        el.textContent = dict[key];
+      }
+    });
+  }
 });

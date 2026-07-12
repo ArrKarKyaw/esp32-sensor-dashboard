@@ -2,9 +2,9 @@
 window.allSensorData = []; 
 window.historyChart = null;
 
-// 🌐 5-Language JSON Dictionary System (ပြင်ပ JSON ဖိုင်မှ Data သိမ်းဆည်းရန် Variable)
-//let languages = null;
-window.languages = null;
+// 🌐 5-Language JSON Dictionary System
+let languages = null;
+
 // 🛠️ Helper to Safely get Device ID
 function getDevId(item) {
   if (!item) return '';
@@ -44,7 +44,6 @@ function renderElevatorList(data) {
   const deviceKeys = [...new Set(data.map(item => getDevId(item)).filter(Boolean))];
   listContainer.innerHTML = ""; 
 
-  // လက်ရှိ ရွေးချယ်ထားသော ဘာသာစကားအတိုင်း Dynamic စာသားများ ရယူရန်
   const currentLang = (document.getElementById('language-select')?.value || 'en').toLowerCase();
   const dict = (languages && languages[currentLang]) ? languages[currentLang] : null;
   
@@ -125,7 +124,6 @@ function updateHistoryChart(deviceId, sensorLogs) {
     window.historyChart = null;
   }
 
-  // Chart Labels များကိုပါ ဘာသာစကားအလိုက် Dynamic ပြောင်းလဲရန်
   const currentLang = (document.getElementById('language-select')?.value || 'en').toLowerCase();
   const dict = (languages && languages[currentLang]) ? languages[currentLang] : null;
   
@@ -220,7 +218,6 @@ function applyFiltersAndRender() {
   } else {
     resetUIElements();
     if (document.getElementById('other-value')) {
-      // JSON ထဲတွင် သတ်မှတ်ထားသော ဒေတာမရှိသည့်စာသားကို သုံးရန်
       document.getElementById('other-value').innerText = dict?.noDataYet || "No data found for the selected date range.";
     }
   }
@@ -309,14 +306,13 @@ window.addEventListener('DOMContentLoaded', async () => {
   const langSelect = document.getElementById('language-select') || document.getElementById('lang-select') || document.querySelector('select:not([id="device-select"])');
   
   const changeLanguageSystem = (selectedLangCode) => {
-    const languages = window.languages
     if (!languages) return; 
     
     const code = selectedLangCode.toLowerCase();
     const dict = languages[code];
     if (!dict) return;
 
-    // HTML DOM ထဲက data-i18n Attribute ရှိတဲ့ element အားလုံးကို JSON စာသားနဲ့ အစားထိုးခြင်း
+    // ✅ FIX: စာမျက်နှာတစ်ခုလုံးရှိ data-i18n Attribute ပါသမျှ (Dashboard ကော Settings ပါ) အားလုံးကို ဘာသာပြန်ပေးခြင်း
     document.querySelectorAll('[data-i18n]').forEach(el => {
       const key = el.getAttribute('data-i18n');
       if (dict[key]) {
@@ -328,32 +324,28 @@ window.addEventListener('DOMContentLoaded', async () => {
       }
     });
 
-    // Web Page ရဲ့ Head Title ကိုပါ JSON ထဲက mainTitle စာသားအတိုင်း ပြောင်းပေးခြင်း
     const mainTitleEl = document.getElementById('main-title') || document.querySelector('title');
     if (mainTitleEl && dict.mainTitle) {
       mainTitleEl.textContent = dict.mainTitle;
     }
 
-    // Dropdown settings text တွေကို Reload ဖြစ်စေပြီး စာသားပြောင်းပေးခြင်း
     if (window.allSensorData && window.allSensorData.length > 0) {
       updateDeviceSelectOptions(window.allSensorData);
     }
 
-    // Page Refresh ဖြစ်လည်း ရွေးထားတာ မပျောက်သွားအောင် သိမ်းထားခြင်း
     localStorage.setItem('selectedLanguage', code);
 
-    // 📢 settings.js နှင့် auth.js တို့ဆီသို့ သတင်းပေးပို့ရန် Event ထုတ်လွှင့်ခြင်း
+    // 📢 settings.js နှင့် auth.js တို့ဆီသို့ သတင်းပို့ရန် Event ထုတ်လွှင့်ခြင်း
     window.dispatchEvent(new CustomEvent('languageChanged', { detail: { lang: code.toUpperCase() } }));
   };
 
- // 📥 language.json ဖိုင်ကို လှမ်းဖတ်ယူခြင်း (Vercel Fixed)
+  // 📥 language.json ဖိုင်ကို လှမ်းဖတ်ယူခြင်း
   try {
-    // Vercel ပေါ်တွင် Body အလွတ်ပြန်မလာစေရန် ?cache_bust= ကို ဖယ်ရှားပြီး တိုက်ရိုက်လမ်းကြောင်းပြောင်းထားပါသည်
-    const langResponse = await fetch('./language.json'); 
+    const langResponse = await fetch('language.json?cache_bust=' + Date.now()); 
     if (!langResponse.ok) throw new Error("language.json loading failed");
     
-    // Global variable အဖြစ် Window object ပေါ်သို့ တိုက်ရိုက်သတ်မှတ်ခြင်း
-    window.languages = await langResponse.json();
+    languages = await langResponse.json();
+    window.languages = languages; // 👈 🔐 FIX: auth.js နှင့် settings.js မှ လှမ်းသုံးနိုင်ရန် window object ပေါ်တင်ပေးခြင်း
 
     if (langSelect) {
       langSelect.addEventListener('change', (e) => {

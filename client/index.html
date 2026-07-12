@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <!-- Browser Tab Title ကိုပါ i18n ချိတ်ဆက်နိုင်ရန် ID သတ်မှတ်ထားခြင်း -->
+    <!-- Browser Tab Title ကို i18n ချိတ်ဆက်ရန် -->
     <title id="main-title" data-i18n="mainTitle">Elevator Information Dashboard</title>
     <link rel="stylesheet" href="./styles.css" />
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -119,7 +119,7 @@
               <label>
                 <span data-i18n="deviceLabel">Device</span>
                 <select id="device-select">
-                  <option value="">All devices</option>
+                  <option value="" data-i18n="allDevices">All devices</option>
                 </select>
               </label>
               <button id="filter-button" class="button button-primary" data-i18n="applyButton">Apply</button>
@@ -146,55 +146,55 @@
           
           <!-- User Accounts Creation -->
           <div class="card settings-card">
-            <h2 id="settings-heading" data-i18n="adminSettingsHeading">Admin Settings</h2>
+            <h2 id="settings-heading" data-i18n="h2ExistAcc">Existing accounts</h2>
             <p id="settings-info" class="info-text" data-i18n="adminSettingsInfo">Create accounts and manage roles for admin, manager, and user access.</p>
             <form id="create-user-form">
               <label>
-                <span data-i18n="emailLabel">Email (optional for local DB, required for Supabase)</span>
+                <span data-i18n="lblEmail">Email (optional for local DB, required for Supabase)</span>
                 <input name="email" id="new-email" type="email" />
               </label>
               <label>
-                <span data-i18n="usernameLabel">Username</span>
+                <span data-i18n="lblUser">Username</span>
                 <input name="username" id="new-username" type="text" required />
               </label>
               <label>
-                <span data-i18n="passwordLabel">Password</span>
+                <span data-i18n="lblPass">Password</span>
                 <input name="password" id="new-password" type="password" required />
               </label>
               <label>
-                <span data-i18n="roleLabel">Role</span>
+                <span data-i18n="lblRole">Role</span>
                 <select name="role" id="new-role" required>
                   <option value="admin" data-i18n="roleAdmin">Admin</option>
                   <option value="manager" data-i18n="roleManager">Manager</option>
                   <option value="user" data-i18n="roleUser" selected>User</option>
                 </select>
               </label>
-              <button type="submit" id="create-account-button" class="button button-primary" data-i18n="createAccountBtn">Create Account</button>
+              <button type="submit" id="create-account-button" class="button button-primary" data-i18n="btnCreateAcc">Create Account</button>
             </form>
             <div id="settings-error" class="error-text hidden"></div>
           </div>
 
           <!-- Device Registration Settings -->
           <div class="card settings-card">
-            <h2 data-i18n="deviceSettingsHeading">ESP32 Device Settings</h2>
-            <p class="info-text" data-i18n="deviceSettingsInfo">Register or rename ESP32 devices, and track status from each unit.</p>
+            <h2 data-i18n="h2EspConfig">ESP32 Device Settings</h2>
+            <p class="info-text" data-i18n="pEspConfig">Register or rename ESP32 devices, and track status from each unit.</p>
             <form id="create-device-form">
               <label>
-                <span data-i18n="deviceKeyLabel">Device Key</span>
+                <span data-i18n="lblDevKey">Device Key</span>
                 <input name="deviceKey" id="new-device-key" type="text" placeholder="esp32-01" required />
               </label>
               <label>
-                <span data-i18n="deviceNameLabel">Device Name</span>
+                <span data-i18n="lblDevName">Device Name</span>
                 <input name="name" id="new-device-name" type="text" placeholder="Main Lobby Sensor" required />
               </label>
-              <button type="submit" class="button button-primary" data-i18n="createDeviceBtn">Create Device</button>
+              <button type="submit" class="button button-primary" data-i18n="btnCreateDev">Create Device</button>
             </form>
             <div id="device-error" class="error-text hidden"></div>
           </div>
 
           <!-- Device Table -->
           <div class="card settings-card">
-            <h2 data-i18n="registeredDevicesHeading">Registered ESP32 Devices</h2>
+            <h2 data-i18n="h2RegDev">Registered ESP32 Devices</h2>
             <table class="device-table">
               <thead>
                 <tr>
@@ -202,9 +202,7 @@
                   <th data-i18n="thKey">Key</th>
                   <th data-i18n="thName">Name</th>
                   <th data-i18n="thLastSeen">Last Seen</th>
-                  <th data-i18n="thTemp">Temp</th>
-                  <th data-i18n="thHum">Hum</th>
-                  <th data-i18n="thPress">Pressure</th>
+                  <th data-i18n="thStatus">Status</th>
                   <th data-i18n="thActions">Actions</th>
                 </tr>
               </thead>
@@ -214,7 +212,7 @@
 
           <!-- Account Table -->
           <div class="card settings-card">
-            <h2 data-i18n="existingAccountsHeading">Existing accounts</h2>
+            <h2 data-i18n="h2ExistAcc">Existing accounts</h2>
             <table class="user-table">
               <thead>
                 <tr>
