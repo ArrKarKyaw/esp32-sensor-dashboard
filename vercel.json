@@ -1,10 +1,12 @@
 {
   "version": 2,
   "rewrites": [
+    { "source": "/language.json", "destination": "/client/language.json" },
     { "source": "/api/login", "destination": "/api/login.js" },
     { "source": "/api/users", "destination": "/api/users.js" },
     { "source": "/api/sensor", "destination": "/api/sensor.js" },
     { "source": "/api/get-sensor", "destination": "/api/get-sensor.js" },
-    { "source": "/api/devices", "destination": "/api/devices.js" }
+    { "source": "/api/devices", "destination": "/api/devices.js" },
+    { "source": "/(.*)", "destination": "/client/$1" }
   ]
 }
