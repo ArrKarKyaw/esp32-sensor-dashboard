@@ -2,59 +2,8 @@
 window.allSensorData = []; 
 window.historyChart = null;
 
-// 🌐 5-Language JSON Dictionary System
-const languages = {
-  EN: {
-    title: "Elevator Information Dashboard",
-    activeLifts: "Active Elevators Status (Multi-ESP32 Nodes)",
-    temp: "Temperature",
-    hum: "Humidity",
-    press: "Pressure",
-    door: "Door Status",
-    settingsBtn: "Settings",
-    logoutBtn: "Logout"
-  },
-  MY: {
-    title: "ဓာတ်လှေကား အချက်အလက် ဒက်ရှ်ဘုတ်",
-    activeLifts: "လက်ရှိအလုပ်လုပ်နေသော ဓာတ်လှေကားများ (Multi-ESP32 Nodes)",
-    temp: "အပူချိန်",
-    hum: "စိုထိုင်းဆ",
-    press: "လေဖိအား",
-    door: "တံခါး အခြေအနေ",
-    settingsBtn: "ပြင်ဆင်ချက်များ",
-    logoutBtn: "ထွက်ရန်"
-  },
-  TH: {
-    title: "แดชบอร์ดข้อมูลลิฟต์",
-    activeLifts: "สถานะลิฟต์ที่ใช้งานอยู่ (Multi-ESP32 Nodes)",
-    temp: "อุณหภูมิ",
-    hum: "ความชื้น",
-    press: "ความดันอากาศ",
-    door: "สถานะประตู",
-    settingsBtn: "ตั้งค่า",
-    logoutBtn: "ออกจากระบบ"
-  },
-  ZH: {
-    title: "电梯信息仪表盘",
-    activeLifts: "运行中的电梯状态 (Multi-ESP32 Nodes)",
-    temp: "温度",
-    hum: "湿度",
-    press: "气压",
-    door: "车门状态",
-    settingsBtn: "设置",
-    logoutBtn: "登出"
-  },
-  VI: {
-    title: "Bảng Điều Khiển Thông Tin Thang Máy",
-    activeLifts: "Trạng Thái Thang Máy Đang Hoạt Động (Multi-ESP32 Nodes)",
-    temp: "Nhiệt độ",
-    hum: "Độ ẩm",
-    press: "Áp suất",
-    door: "Trạng thái cửa",
-    settingsBtn: "Cài đặt",
-    logoutBtn: "Đăng xuất"
-  }
-};
+// 🌐 5-Language JSON Dictionary System (ပြင်ပ JSON ဖိုင်မှ Data သိမ်းဆည်းရန် Variable)
+let languages = null;
 
 // 🛠️ Helper to Safely get Device ID
 function getDevId(item) {
@@ -138,7 +87,12 @@ function updateDeviceSelectOptions(data) {
   const deviceSelect = document.getElementById('device-select');
   if (!deviceSelect) return;
   const currentSelected = deviceSelect.value;
-  deviceSelect.innerHTML = '<option value="" style="color: #222222; background-color: #ffffff;">-- Select Device --</option>';
+  
+  // JSON ထဲက ဘာသာစကားအလိုက် "All devices" စာသားပြောင်းရန် (JSON မ‌ရောက်သေးရင် fallback သုံးမယ်)
+  const currentLang = (document.getElementById('language-select')?.value || 'en').toLowerCase();
+  const allDevicesText = (languages && languages[currentLang]) ? languages[currentLang].allDevices : "All devices";
+  
+  deviceSelect.innerHTML = `<option value="" style="color: #222222; background-color: #ffffff;">-- ${allDevicesText} --</option>`;
   const uniqueDevices = [...new Set(data.map(item => getDevId(item)).filter(Boolean))];
   uniqueDevices.forEach(devKey => {
     let opt = document.createElement('option');
@@ -269,7 +223,7 @@ function resetUIElements() {
 }
 
 // 🎯 Event Bindings & Initialization (DOM Fully Loaded Safe Zone)
-window.addEventListener('DOMContentLoaded', () => {
+window.addEventListener('DOMContentLoaded', async () => {
   window.settingsButton = document.getElementById('settings-button');
   window.settingsBackButton = document.getElementById('settings-back-button');
   window.dashboardView = document.getElementById('dashboard-view');
@@ -333,49 +287,70 @@ window.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // 🌐 JSON-Based Language Toggle Logic
-  const langSelect = document.getElementById('lang-select') || document.querySelector('select:not([id="device-select"])');
-  if (langSelect) {
-    langSelect.addEventListener('change', (e) => {
-      const code = e.target.value; // EN, MY, TH, ZH, VI
-      const dict = languages[code];
-      if (!dict) return;
+  // 🌐 external language.json ကို လှမ်းယူပြီး UI update လုပ်မည့် စနစ်သစ်
+  const langSelect = document.getElementById('language-select') || document.getElementById('lang-select') || document.querySelector('select:not([id="device-select"])');
+  
+  const changeLanguageSystem = (selectedLangCode) => {
+    if (!languages) return; // JSON ဒေတာမရောက်သေးရင် ခေတ္တစောင့်မယ်
+    
+    // language.json ထဲက key တွေကအသေး (en, my, th, zh, vi) ဖြစ်လို့ .toLowerCase() သုံးရပါမယ်
+    const code = selectedLangCode.toLowerCase();
+    const dict = languages[code];
+    if (!dict) return;
 
-      // 1. Dashboard Title & Sub-headers
-      const titleEl = document.querySelector('h1') || document.querySelector('.title');
-      if (titleEl) titleEl.textContent = dict.title;
-      
-      let liftHeaderEl = null;
-      document.querySelectorAll('h1, h2, h3, h4, div').forEach(el => {
-        if (el.textContent.includes('Active Elevators') || el.textContent.includes('လက်ရှိအလုပ်လုပ်နေသော') || el.textContent.includes('สถานะลิฟต์') || el.textContent.includes('运行中的') || el.textContent.includes('Trạng Thái')) {
-          liftHeaderEl = el;
+    // HTML DOM ထဲက data-i18n Attribute ရှိတဲ့ element အားလုံးကို JSON စာသားနဲ့ အစားထိုးခြင်း
+    document.querySelectorAll('[data-i18n]').forEach(el => {
+      const key = el.getAttribute('data-i18n');
+      if (dict[key]) {
+        if (el.id === 'export-csv' || el.id === 'export-json') {
+          el.textContent = `📥 ${dict[key]}`; // Icon လေးတွေထိန်းသိမ်းပေးထားပါတယ်
+        } else {
+          el.textContent = dict[key];
         }
-      });
-      if (liftHeaderEl) liftHeaderEl.textContent = dict.activeLifts;
-
-      // 2. Main Navigation Buttons
-      if (window.settingsButton) window.settingsButton.textContent = dict.settingsBtn;
-      const logoutBtn = document.getElementById('logout-button');
-      if (logoutBtn) logoutBtn.textContent = dict.logoutBtn;
-
-      // 3. Status Grid Labels Text Matching
-      document.querySelectorAll('div, label, th, button').forEach(el => {
-        if (el.childNodes.length > 0) {
-          const text = el.childNodes[0].textContent.trim();
-          if (['Temperature', 'အပူချိန်', 'อุณหภูมิ', '温度', 'Nhiệt độ'].includes(text)) el.childNodes[0].textContent = dict.temp;
-          if (['Humidity', 'စိုထိုင်းဆ', 'ความชื้น', '湿度', 'Độ ẩm'].includes(text)) el.childNodes[0].textContent = dict.hum;
-          if (['Pressure', 'လေဖိအား', 'ความดันอากาศ', '气压', 'Áp suất'].includes(text)) el.childNodes[0].textContent = dict.press;
-          if (['Door Status', 'တံခါး အခြေအနေ', 'สถานะประตู', '车门状态', 'Trạng thái cửa'].includes(text)) el.childNodes[0].textContent = dict.door;
-        }
-      });
-
-      // 📢 Broadcast Event to settings.js & auth.js
-      window.dispatchEvent(new CustomEvent('languageChanged', { detail: { lang: code } }));
+      }
     });
+
+    // Web Page ရဲ့ Head Title ကိုပါ JSON ထဲက mainTitle စာသားအတိုင်း ပြောင်းပေးခြင်း
+    const mainTitleEl = document.getElementById('main-title') || document.querySelector('title');
+    if (mainTitleEl && dict.mainTitle) {
+      mainTitleEl.textContent = dict.mainTitle;
+    }
+
+    // Dropdown settings text တွေကို Reload ဖြစ်စေပြီး စာသားပြောင်းပေးခြင်း
+    if (window.allSensorData && window.allSensorData.length > 0) {
+      updateDeviceSelectOptions(window.allSensorData);
+    }
+
+    // Page Refresh ဖြစ်လည်း ရွေးထားတာ မပျောက်သွားအောင် သိမ်းထားခြင်း
+    localStorage.setItem('selectedLanguage', code);
+
+    // 📢 settings.js နှင့် auth.js တို့ဆီသို့ သတင်းပေးပို့ရန် Event ထုတ်လွှင့်ခြင်း (.toUpperCase() နဲ့ ညှိပြီး ပို့ပေးထားပါတယ်)
+    window.dispatchEvent(new CustomEvent('languageChanged', { detail: { lang: code.toUpperCase() } }));
+  };
+
+  // 📥 language.json ဖိုင်ကို လှမ်းဖတ်ယူခြင်း (Async Fetch)
+  try {
+    const langResponse = await fetch('/language.json'); // path ကို လိုအပ်သလို ပြောင်းနိုင်ပါတယ် (ဥပမာ- ./language.json)
+    if (!langResponse.ok) throw new Error("language.json loading failed");
+    languages = await langResponse.json();
+
+    if (langSelect) {
+      // Dropdown value ပြောင်းလဲချိန်မှာ အလုပ်လုပ်စေရန် binding လုပ်ခြင်း
+      langSelect.addEventListener('change', (e) => {
+        changeLanguageSystem(e.target.value);
+      });
+
+      // ယခင်သိမ်းဆည်းထားဖူးသော ဘာသာစကား သို့မဟုတ် လက်ရှိ Dropdown ဖြစ်စေ Default 'en' ဖြင့်စတင်ရန်
+      const savedLang = localStorage.getItem('selectedLanguage') || langSelect.value || 'en';
+      langSelect.value = savedLang.toLowerCase();
+      changeLanguageSystem(savedLang);
+    }
+  } catch (error) {
+    console.error("Error initializing language system from JSON:", error);
   }
 
   // Auth & Initial Load Handling
-if (localStorage.getItem('token')) { 
+  if (localStorage.getItem('token')) { 
     if (typeof window.showDashboard === 'function') window.showDashboard();
   } else {
     if (window.loginView) window.loginView.classList.remove('hidden');
