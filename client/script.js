@@ -348,8 +348,8 @@ window.addEventListener('DOMContentLoaded', async () => {
  // 📥 language.json ဖိုင်ကို လှမ်းဖတ်ယူခြင်း (Vercel Fixed)
   try {
     // Vercel ပေါ်တွင် Body အလွတ်ပြန်မလာစေရန် ?cache_bust= ကို ဖယ်ရှားပြီး တိုက်ရိုက်လမ်းကြောင်းပြောင်းထားပါသည်
-    const langResponse = await fetch('./language.json'); 
-    if (!langResponse.ok) throw new Error("language.json loading failed");
+    const langResponse = await fetch('/language.json'); 
+    if (!langResponse.ok) throw new Error("language.json loading failed with status");
     
     // Global variable အဖြစ် Window object ပေါ်သို့ တိုက်ရိုက်သတ်မှတ်ခြင်း
     window.languages = await langResponse.json();
