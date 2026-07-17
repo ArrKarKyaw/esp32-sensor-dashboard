@@ -64,12 +64,39 @@
 
         <!-- 📊 2. DASHBOARD VIEW SECTION -->
         <section id="dashboard-view" class="hidden">
+          <div class="card overview-card" style="margin-bottom: 20px;">
+            <div class="overview-header">
+              <div>
+                <p class="section-kicker" data-i18n="overviewTitle">Live system overview</p>
+                <h2 id="dashboard-status-message" class="overview-heading" data-i18n="statusLoading">Loading live device status...</h2>
+              </div>
+              <span id="dashboard-status-badge" class="status-pill status-loading" data-i18n="statusLoading">Loading</span>
+            </div>
+            <div class="overview-metrics">
+              <div class="overview-metric">
+                <span data-i18n="overviewDevices">Registered devices</span>
+                <strong id="overview-device-count">0</strong>
+              </div>
+              <div class="overview-metric">
+                <span data-i18n="overviewHealthy">Healthy now</span>
+                <strong id="overview-online-count">0</strong>
+              </div>
+              <div class="overview-metric">
+                <span data-i18n="overviewSelection">Selected device</span>
+                <strong id="overview-selected-device">--</strong>
+              </div>
+              <div class="overview-metric">
+                <span data-i18n="overviewUpdated">Last update</span>
+                <strong id="overview-last-updated">--</strong>
+              </div>
+            </div>
+          </div>
           
           <!-- Active Elevator Nodes List -->
           <div class="card lift-list-card" style="margin-bottom: 20px;">
-            <h3 style="color: #01919d; margin-top: 0; margin-bottom: 10px;" data-i18n="activeLiftsTitle">Active Elevators Status (Multi-ESP32 Nodes)</h3>
-            <div id="lift-status-list" style="display: flex; gap: 12px; flex-wrap: wrap;">
-              <p class="info-text" style="color: #aaa; margin: 0;" data-i18n="detectingNodes">Detecting active elevator ESP32 units...</p>
+            <h3 class="lift-list-title" data-i18n="activeLiftsTitle">Active Elevators Status (Multi-ESP32 Nodes)</h3>
+            <div id="lift-status-list" class="lift-status-grid">
+              <p class="info-text" style="margin: 0;" data-i18n="detectingNodes">Detecting active elevator ESP32 units...</p>
             </div>
           </div>
 
@@ -134,6 +161,7 @@
           <!-- Chart Area -->
           <div class="card chart-card">
             <h2 id="chart-heading" data-i18n="chartHeading">Sensor history</h2>
+            <p id="chart-empty-state" class="chart-empty-state visible" data-i18n="chartEmptyState">Select a device to view recent history.</p>
             <canvas id="history-chart" height="220"></canvas>
           </div>
         </section>

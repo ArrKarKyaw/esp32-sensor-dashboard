@@ -3,6 +3,13 @@ window.loadSettingsData = async function() {
   const usersTableBody = document.getElementById('users-table-body');
   const devicesTableBody = document.getElementById('devices-table-body');
   const token = localStorage.getItem('token');
+
+  if (!token) {
+    window.appState.setRegisteredDevices([]);
+    if (usersTableBody) usersTableBody.innerHTML = '';
+    if (devicesTableBody) devicesTableBody.innerHTML = '';
+    return;
+  }
   
   // လက်ရှိရွေးချယ်ထားသော ဘာသာစကားကုဒ်ကို ရယူခြင်း
   const currentLang = document.getElementById('language-select')?.value || 'en';
@@ -236,6 +243,8 @@ window.addEventListener('languageChanged', (e) => {
     });
   }
 
-  // Active Tables ကို ချက်ချင်း live-update လုပ်ရန် ခေါ်ယူခြင်း
-  window.loadSettingsData();
+  // Settings tables only need refreshing for authenticated users.
+  if (localStorage.getItem('token') && window.settingsView && !window.settingsView.classList.contains('hidden')) {
+    window.loadSettingsData();
+  }
 });

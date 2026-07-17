@@ -3,6 +3,9 @@
 // ========================================================
 window.updateDashboardData = async function() {
   if (window.dashboardView && window.dashboardView.classList.contains('hidden')) return;
+  if (window.appState.getAllSensorData().length === 0) {
+    setDashboardStatus('loading');
+  }
   try {
     const response = await fetch('/api/get-sensor');
     if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
@@ -20,10 +23,132 @@ window.updateDashboardData = async function() {
         updateDeviceSelectOptions(normalizedData);
         applyFiltersAndRender();
       }
+      return;
     }
+
+    window.appState.setAllSensorData([]);
+    renderElevatorList([]);
+    updateDeviceSelectOptions([]);
+    resetUIElements();
+    updateOverviewPanel([], document.getElementById('device-select')?.value || '');
+    setChartEmptyState();
   } catch (error) {
     console.error("Error fetching sensor data:", error);
+    setDashboardStatus('offline', window.appState.getDictionary()?.dashboardLoadError || 'Unable to refresh live sensor data.');
   }
+}
+
+function getStatusMeta(status) {
+  const dict = window.appState.getDictionary();
+  const statuses = {
+    loading: { className: 'status-loading', label: dict?.statusLoading || 'Loading' },
+    online: { className: 'status-online', label: dict?.statusOnline || 'Online' },
+    warning: { className: 'status-warning', label: dict?.statusWarning || 'Warning' },
+    stale: { className: 'status-stale', label: dict?.statusStale || 'Stale' },
+    offline: { className: 'status-offline', label: dict?.statusOffline || 'Offline' },
+    'no-data': { className: 'status-nodata', label: dict?.statusNoData || 'No live data' },
+  };
+
+  return statuses[status] || statuses.offline;
+}
+
+function getDeviceHealth(record) {
+  if (!record?.created_at) {
+    return { status: 'offline', ...getStatusMeta('offline') };
+  }
+
+  const ageMinutes = (Date.now() - new Date(record.created_at).getTime()) / 60000;
+  if (!Number.isFinite(ageMinutes) || ageMinutes > 15) {
+    return { status: 'offline', ...getStatusMeta('offline') };
+  }
+
+  if (ageMinutes > 5) {
+    return { status: 'stale', ...getStatusMeta('stale') };
+  }
+
+  if (record.door_status === 'Open') {
+    return { status: 'warning', ...getStatusMeta('warning') };
+  }
+
+  return { status: 'online', ...getStatusMeta('online') };
+}
+
+function setDashboardStatus(status, message) {
+  const badgeEl = document.getElementById('dashboard-status-badge');
+  const messageEl = document.getElementById('dashboard-status-message');
+  const meta = getStatusMeta(status);
+
+  if (badgeEl) {
+    badgeEl.className = `status-pill ${meta.className}`;
+    badgeEl.textContent = meta.label;
+  }
+
+  if (messageEl) {
+    messageEl.textContent = message || meta.label;
+  }
+}
+
+function setChartEmptyState(message) {
+  const dict = window.appState.getDictionary();
+  const emptyStateEl = document.getElementById('chart-empty-state');
+  if (!emptyStateEl) return;
+
+  emptyStateEl.textContent = message || dict?.chartEmptyState || 'Select a device to view recent history.';
+  emptyStateEl.classList.add('visible');
+}
+
+function hideChartEmptyState() {
+  const emptyStateEl = document.getElementById('chart-empty-state');
+  if (!emptyStateEl) return;
+  emptyStateEl.classList.remove('visible');
+}
+
+function updateOverviewPanel(data, selectedDevice) {
+  const allDevices = window.appState.getRegisteredDevices();
+  const deviceIds = allDevices.length > 0
+    ? allDevices.map((device) => window.appState.getDeviceKey(device)).filter(Boolean)
+    : [...new Set(data.map((item) => window.appState.getDeviceId(item)).filter(Boolean))];
+
+  const healthStatuses = deviceIds.map((deviceId) => {
+    const latestRecord = data.find((item) => window.appState.getDeviceId(item) === deviceId);
+    return getDeviceHealth(latestRecord).status;
+  });
+
+  const healthyCount = healthStatuses.filter((status) => status === 'online' || status === 'warning').length;
+  const latestRecord = data[0] || null;
+
+  const deviceCountEl = document.getElementById('overview-device-count');
+  const onlineCountEl = document.getElementById('overview-online-count');
+  const selectedDeviceEl = document.getElementById('overview-selected-device');
+  const updatedEl = document.getElementById('overview-last-updated');
+  const dict = window.appState.getDictionary();
+
+  if (deviceCountEl) deviceCountEl.textContent = String(deviceIds.length);
+  if (onlineCountEl) onlineCountEl.textContent = String(healthyCount);
+  if (selectedDeviceEl) selectedDeviceEl.textContent = selectedDevice ? selectedDevice.toUpperCase() : '--';
+  if (updatedEl) updatedEl.textContent = latestRecord?.created_at ? new Date(latestRecord.created_at).toLocaleString() : '--';
+
+  if (!data.length) {
+    setDashboardStatus('no-data');
+    return;
+  }
+
+  if (healthStatuses.includes('warning')) {
+    setDashboardStatus('warning', `${getStatusMeta('warning').label} · ${window.appState.getDeviceId(latestRecord).toUpperCase()}`);
+    return;
+  }
+
+  if (healthStatuses.includes('stale')) {
+    setDashboardStatus('stale', `${getStatusMeta('stale').label} · ${window.appState.getDeviceId(latestRecord).toUpperCase()}`);
+    return;
+  }
+
+  if (healthyCount > 0) {
+    setDashboardStatus('online', `${getStatusMeta('online').label} · ${window.appState.getDeviceId(latestRecord).toUpperCase()}`);
+    return;
+  }
+
+  setDashboardStatus('offline', dict?.dashboardLoadError || 'Unable to refresh live sensor data.');
 }
 
 function renderElevatorList(data) {
@@ -48,9 +173,15 @@ function renderElevatorList(data) {
   const doorLabel = dict?.doorLabel || "Door";
   const offlineText = dict?.offlineBadge || "Offline"; // settings.js ထဲက offline စာသားကို ယူသုံးခြင်း
 
+  if (deviceKeys.length === 0) {
+    listContainer.innerHTML = `<p class="info-text" style="margin:0;">${dict?.statusNoData || 'No live data'}</p>`;
+    return;
+  }
+
   deviceKeys.forEach(devId => {
     // ထို device ရဲ့ နောက်ဆုံးရ log ဒေတာ ရှိမရှိ ရှာမယ်
     const devData = data.find(item => window.appState.getDeviceId(item) === devId);
+    const healthMeta = getDeviceHealth(devData);
     
     // ဒေတာ ရှိရင် မူရင်းအတိုင်းပြမယ်၊ မရှိရင် Offline State ပြမယ်
     const isOpen = devData ? devData.door_status === "Open" : false;
@@ -58,25 +189,21 @@ function renderElevatorList(data) {
     const statusColor = devData ? (isOpen ? "#ff6384" : "#4bc0c0") : "#6c757d";
 
     const liftCard = document.createElement('div');
-    liftCard.style = `
-      border-left: 5px solid ${statusColor}; 
-      padding: 12px; 
-      min-width: 160px; 
-      cursor: pointer; 
-      background: rgba(255, 255, 255, 0.05); 
-      border-radius: 6px;
-      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-      transition: all 0.2s ease;
-      opacity: ${devData ? '1' : '0.6'}; /* Offline ဖြစ်နေရင် မှိန်ပြထားမယ် */
-    `;
+    liftCard.className = 'lift-status-card';
+    liftCard.style.borderLeft = `5px solid ${statusColor}`;
+    liftCard.style.cursor = 'pointer';
+    liftCard.style.opacity = devData ? '1' : '0.6';
     
     const tempVal = (devData && devData.temperature && devData.temperature > 0) ? devData.temperature.toFixed(1) + "°C" : "--°C";
     const doorStatusText = devData ? (devData.door_status || "Unknown") : offlineText;
     
     liftCard.innerHTML = `
-      <h4 style="margin:0 0 5px 0; color:#01919d; font-size:1.1rem;">${devId.toUpperCase()}</h4>
-      <p style="margin:3px 0; font-size:0.9rem;">${tempLabel}: <b>${tempVal}</b></p>
-      <p style="margin:3px 0; font-size:0.9rem;">${doorLabel}: <span style="color:${statusColor}; font-weight:bold;">${doorStatusText}</span></p>
+      <div class="lift-status-meta">
+        <h4>${devId.toUpperCase()}</h4>
+        <span class="status-pill ${healthMeta.className}">${healthMeta.label}</span>
+      </div>
+      <p>${tempLabel}: <b>${tempVal}</b></p>
+      <p>${doorLabel}: <span style="color:${statusColor}; font-weight:bold;">${doorStatusText}</span></p>
     `;
     
     liftCard.onclick = () => {
@@ -156,9 +283,11 @@ function applyFiltersAndRender() {
   const selectedDevice = document.getElementById('device-select')?.value;
 
   renderElevatorList(window.appState.getAllSensorData());
+  updateOverviewPanel(window.appState.getAllSensorData(), selectedDevice || '');
 
   if (!selectedDevice) {
     resetUIElements();
+    setChartEmptyState();
     return;
   }
   
@@ -211,20 +340,23 @@ function applyFiltersAndRender() {
       `;
     }
 
+    hideChartEmptyState();
     updateHistoryChart(selectedDevice, filteredData);
   } else {
     resetUIElements();
     if (document.getElementById('other-value')) {
       document.getElementById('other-value').innerText = dict?.noDataYet || "No data found for the selected date range.";
     }
+    setChartEmptyState(dict?.chartEmptyState || 'Select a device to view recent history.');
   }
 }
 
 function resetUIElements() {
+  const dict = window.appState.getDictionary();
   if (document.getElementById('temperature-value')) document.getElementById('temperature-value').innerText = "-- °C";
   if (document.getElementById('humidity-value')) document.getElementById('humidity-value').innerText = "-- %";
   if (document.getElementById('pressure-value')) document.getElementById('pressure-value').innerText = "-- hPa";
-  if (document.getElementById('other-value')) document.getElementById('other-value').innerText = "Please select a device";
+  if (document.getElementById('other-value')) document.getElementById('other-value').innerText = dict?.selectDevicePrompt || "Please select a device";
   if (document.getElementById('door-status-value')) {
     document.getElementById('door-status-value').innerText = "--";
     document.getElementById('door-status-value').style.color = "#ffffff";
@@ -327,9 +459,8 @@ window.addEventListener('DOMContentLoaded', async () => {
       mainTitleEl.textContent = dict.mainTitle;
     }
 
-    if (window.appState.getAllSensorData().length > 0) {
-      updateDeviceSelectOptions(window.appState.getAllSensorData());
-    }
+    updateOverviewPanel(window.appState.getAllSensorData(), document.getElementById('device-select')?.value || '');
+    updateDeviceSelectOptions(window.appState.getAllSensorData());
 
     localStorage.setItem('selectedLanguage', code);
 
