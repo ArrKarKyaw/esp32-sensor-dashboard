@@ -1,13 +1,94 @@
 // ⚙️ ADMIN SETTINGS - USER & DEVICE MANAGEMENT
+function setSettingsStatus(message, tone = 'info') {
+  const banner = document.getElementById('settings-status-banner');
+  if (!banner) return;
+
+  if (!message) {
+    banner.textContent = '';
+    banner.className = 'settings-status-banner hidden';
+    return;
+  }
+
+  banner.textContent = message;
+  banner.className = `settings-status-banner settings-status-${tone}`;
+}
+
+window.updateSettingsAccessUI = function() {
+  const role = window.apiClient.getRole();
+  const dict = window.appState.getDictionary();
+  const canManageUsers = window.apiClient.canManageUsers();
+  const canManageDevices = window.apiClient.canManageDevices();
+
+  const userSection = document.getElementById('user-management-section');
+  const deviceSection = document.getElementById('device-management-section');
+  const roleChip = document.getElementById('settings-role-chip');
+  const modeHeading = document.getElementById('settings-mode-heading');
+  const modeCopy = document.getElementById('settings-mode-copy');
+  const userScope = document.getElementById('settings-user-scope');
+  const deviceScope = document.getElementById('settings-device-scope');
+  const isManager = role === 'manager';
+  const isAdmin = role === 'admin';
+
+  if (userSection) userSection.classList.toggle('hidden', !canManageUsers);
+  if (deviceSection) deviceSection.classList.toggle('hidden', !canManageDevices);
+
+  if (roleChip) {
+    roleChip.className = `status-pill ${isAdmin ? 'status-online' : isManager ? 'status-warning' : 'status-offline'}`;
+    roleChip.textContent = isAdmin
+      ? (dict?.settingsAccessAdmin || 'Admin access')
+      : isManager
+        ? (dict?.settingsAccessManager || 'Manager access')
+        : (dict?.settingsRestrictedAccess || 'Restricted');
+  }
+
+  if (modeHeading) {
+    modeHeading.textContent = isAdmin
+      ? (dict?.settingsAccessAdmin || 'Admin access')
+      : isManager
+        ? (dict?.settingsAccessManager || 'Manager access')
+        : (dict?.settingsRestrictedAccess || 'Restricted');
+  }
+
+  if (modeCopy) {
+    modeCopy.textContent = isAdmin
+      ? (dict?.settingsAdminCopy || 'You can manage accounts, roles, and registered devices.')
+      : isManager
+        ? (dict?.settingsManagerCopy || 'You can manage registered devices but not user accounts.')
+        : (dict?.settingsLoadFailed || 'Unable to load settings data.');
+  }
+
+  if (userScope) {
+    userScope.textContent = canManageUsers
+      ? (dict?.settingsFullAccess || 'Full access')
+      : (dict?.settingsRestrictedAccess || 'Restricted');
+  }
+
+  if (deviceScope) {
+    deviceScope.textContent = canManageDevices
+      ? (dict?.settingsFullAccess || 'Full access')
+      : (dict?.settingsRestrictedAccess || 'Restricted');
+  }
+};
+
+function updateSettingsSyncTime() {
+  const lastSyncEl = document.getElementById('settings-last-sync');
+  if (!lastSyncEl) return;
+  lastSyncEl.textContent = new Date().toLocaleString();
+}
+
 window.loadSettingsData = async function() {
   const usersTableBody = document.getElementById('users-table-body');
   const devicesTableBody = document.getElementById('devices-table-body');
   const token = window.apiClient.getToken();
+  const dict = window.appState.getDictionary();
+
+  window.updateSettingsAccessUI();
 
   if (!token) {
     window.appState.setRegisteredDevices([]);
     if (usersTableBody) usersTableBody.innerHTML = '';
     if (devicesTableBody) devicesTableBody.innerHTML = '';
+    setSettingsStatus('');
     return;
   }
   
@@ -20,6 +101,8 @@ window.loadSettingsData = async function() {
   const offlineText = getTranslation('offlineBadge', currentLang);
   const unnamedSensorText = getTranslation('unnamedSensor', currentLang);
   const neverText = getTranslation('neverSeen', currentLang);
+
+  setSettingsStatus(dict?.settingsStatusReady || 'Settings data is ready.', 'info');
 
   try {
     if (window.apiClient.canManageUsers()) {
@@ -49,7 +132,10 @@ window.loadSettingsData = async function() {
     } else if (usersTableBody) {
       usersTableBody.innerHTML = '';
     }
-  } catch (err) { console.error("Error loading users:", err); }
+  } catch (err) {
+    console.error("Error loading users:", err);
+    setSettingsStatus(err.message || dict?.settingsLoadFailed || 'Unable to load settings data.', 'error');
+  }
 
   try {
     // Vercel Path Safe: api/get-sensor
@@ -90,7 +176,17 @@ window.loadSettingsData = async function() {
     } else if (devicesTableBody) {
       devicesTableBody.innerHTML = '';
     }
-  } catch (err) { console.error("Error loading devices:", err); }
+    updateSettingsSyncTime();
+    setSettingsStatus(
+      window.apiClient.canManageUsers()
+        ? (dict?.settingsStatusSynced || 'Settings synchronized successfully.')
+        : (dict?.settingsStatusManagerMode || 'Manager mode hides user administration controls.'),
+      window.apiClient.canManageUsers() ? 'success' : 'warning'
+    );
+  } catch (err) {
+    console.error("Error loading devices:", err);
+    setSettingsStatus(err.message || dict?.settingsLoadFailed || 'Unable to load settings data.', 'error');
+  }
 }
 
 // Event Setup for settings forms
@@ -100,9 +196,12 @@ window.initSettingsEvents = function() {
   const settingsError = document.getElementById('settings-error');
   const deviceError = document.getElementById('device-error');
 
+  window.updateSettingsAccessUI();
+
   if (createUserForm) {
     createUserForm.addEventListener('submit', async (e) => {
       e.preventDefault();
+      if (!window.apiClient.canManageUsers()) return;
       const username = document.getElementById('new-username').value.trim();
       const password = document.getElementById('new-password').value;
       const role = document.getElementById('new-role').value;
@@ -116,9 +215,11 @@ window.initSettingsEvents = function() {
           settingsError.style.color = "green"; 
           settingsError.classList.remove('hidden'); 
         }
+        setSettingsStatus(getTranslation('userSuccess', currentLang), 'success');
         window.loadSettingsData();
       } catch (err) {
         if (settingsError) { settingsError.textContent = err.message; settingsError.style.color = "red"; settingsError.classList.remove('hidden'); }
+        setSettingsStatus(err.message, 'error');
       }
     });
   }
@@ -138,9 +239,11 @@ window.initSettingsEvents = function() {
           deviceError.style.color = "green"; 
           deviceError.classList.remove('hidden'); 
         }
+        setSettingsStatus(getTranslation('deviceSuccess', currentLang), 'success');
         window.loadSettingsData();
       } catch (err) {
         if (deviceError) { deviceError.textContent = err.message; deviceError.style.color = "red"; deviceError.classList.remove('hidden'); }
+        setSettingsStatus(err.message, 'error');
       }
     });
   }
@@ -149,15 +252,25 @@ window.initSettingsEvents = function() {
 window.deleteUser = async (id) => {
   const currentLang = document.getElementById('language-select')?.value || 'en';
   if(!confirm(getTranslation('confirmDeleteUser', currentLang))) return;
-  await window.apiClient.deleteJson(`api/users?id=${id}`, { auth: true });
-  window.loadSettingsData();
+  try {
+    await window.apiClient.deleteJson(`api/users?id=${id}`, { auth: true });
+    setSettingsStatus(getTranslation('userSuccess', currentLang), 'success');
+    window.loadSettingsData();
+  } catch (err) {
+    setSettingsStatus(err.message, 'error');
+  }
 };
 
 window.deleteDevice = async (id) => {
   const currentLang = document.getElementById('language-select')?.value || 'en';
   if(!confirm(getTranslation('confirmDeleteDevice', currentLang))) return;
-  await window.apiClient.deleteJson(`api/devices?id=${id}`, { auth: true });
-  window.loadSettingsData();
+  try {
+    await window.apiClient.deleteJson(`api/devices?id=${id}`, { auth: true });
+    setSettingsStatus(getTranslation('deviceSuccess', currentLang), 'success');
+    window.loadSettingsData();
+  } catch (err) {
+    setSettingsStatus(err.message, 'error');
+  }
 };
 
 // ⚙️ Local Backup Dictionary (language.json မတက်လာပါက အရန်သုံးရန်)
@@ -225,6 +338,8 @@ window.addEventListener('languageChanged', (e) => {
       }
     });
   }
+
+  window.updateSettingsAccessUI();
 
   // Settings tables only need refreshing for authenticated users.
   if (window.apiClient.getToken() && window.settingsView && !window.settingsView.classList.contains('hidden')) {

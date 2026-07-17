@@ -85,6 +85,10 @@ window.showDashboard = function() {
     window.settingsButton.classList.remove('hidden');
   }
 
+  if (typeof window.updateSettingsAccessUI === 'function') {
+    window.updateSettingsAccessUI();
+  }
+
   if (typeof window.updateDashboardData === 'function') {
     window.updateDashboardData();
   }

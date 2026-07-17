@@ -171,39 +171,36 @@
           <div class="settings-header">
             <button type="button" id="settings-back-button" class="button button-utility" data-i18n="backToDashboard">Back to Dashboard</button>
           </div>
-          
-          <!-- User Accounts Creation -->
-          <div class="card settings-card">
-            <h2 id="settings-heading" data-i18n="h2ExistAcc">Existing accounts</h2>
-            <p id="settings-info" class="info-text" data-i18n="adminSettingsInfo">Create accounts and manage roles for admin, manager, and user access.</p>
-            <form id="create-user-form">
-              <label>
-                <span data-i18n="lblEmail">Email (optional for local DB, required for Supabase)</span>
-                <input name="email" id="new-email" type="email" />
-              </label>
-              <label>
-                <span data-i18n="lblUser">Username</span>
-                <input name="username" id="new-username" type="text" required />
-              </label>
-              <label>
-                <span data-i18n="lblPass">Password</span>
-                <input name="password" id="new-password" type="password" required />
-              </label>
-              <label>
-                <span data-i18n="lblRole">Role</span>
-                <select name="role" id="new-role" required>
-                  <option value="admin" data-i18n="roleAdmin">Admin</option>
-                  <option value="manager" data-i18n="roleManager">Manager</option>
-                  <option value="user" data-i18n="roleUser" selected>User</option>
-                </select>
-              </label>
-              <button type="submit" id="create-account-button" class="button button-primary" data-i18n="btnCreateAcc">Create Account</button>
-            </form>
-            <div id="settings-error" class="error-text hidden"></div>
-          </div>
 
-          <!-- Device Registration Settings -->
-          <div class="card settings-card">
+          <div class="card settings-overview-card">
+            <div class="settings-overview-header">
+              <div>
+                <p class="section-kicker" data-i18n="settingsAccessTitle">Settings access</p>
+                <h2 id="settings-mode-heading">Admin access</h2>
+                <p id="settings-mode-copy" class="info-text">You can manage accounts, roles, and registered devices.</p>
+              </div>
+              <span id="settings-role-chip" class="status-pill status-online">Admin</span>
+            </div>
+            <div class="settings-overview-grid">
+              <div class="overview-metric">
+                <span data-i18n="settingsUsersSection">User administration</span>
+                <strong id="settings-user-scope">Full access</strong>
+              </div>
+              <div class="overview-metric">
+                <span data-i18n="settingsDevicesSection">Device administration</span>
+                <strong id="settings-device-scope">Full access</strong>
+              </div>
+              <div class="overview-metric">
+                <span data-i18n="settingsLastSync">Last sync</span>
+                <strong id="settings-last-sync">--</strong>
+              </div>
+            </div>
+            <div id="settings-status-banner" class="settings-status-banner hidden"></div>
+          </div>
+          
+          <div id="device-management-section">
+            <!-- Device Registration Settings -->
+            <div class="card settings-card">
             <h2 data-i18n="h2EspConfig">ESP32 Device Settings</h2>
             <p class="info-text" data-i18n="pEspConfig">Register or rename ESP32 devices, and track status from each unit.</p>
             <form id="create-device-form">
@@ -218,40 +215,73 @@
               <button type="submit" class="button button-primary" data-i18n="btnCreateDev">Create Device</button>
             </form>
             <div id="device-error" class="error-text hidden"></div>
+            </div>
+
+            <!-- Device Table -->
+            <div class="card settings-card">
+              <h2 data-i18n="h2RegDev">Registered ESP32 Devices</h2>
+              <table class="device-table">
+                <thead>
+                  <tr>
+                    <th data-i18n="thId">ID</th>
+                    <th data-i18n="thKey">Key</th>
+                    <th data-i18n="thName">Name</th>
+                    <th data-i18n="thLastSeen">Last Seen</th>
+                    <th data-i18n="thStatus">Status</th>
+                    <th data-i18n="thActions">Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="devices-table-body"></tbody>
+              </table>
+            </div>
           </div>
 
-          <!-- Device Table -->
-          <div class="card settings-card">
-            <h2 data-i18n="h2RegDev">Registered ESP32 Devices</h2>
-            <table class="device-table">
-              <thead>
-                <tr>
-                  <th data-i18n="thId">ID</th>
-                  <th data-i18n="thKey">Key</th>
-                  <th data-i18n="thName">Name</th>
-                  <th data-i18n="thLastSeen">Last Seen</th>
-                  <th data-i18n="thStatus">Status</th>
-                  <th data-i18n="thActions">Actions</th>
-                </tr>
-              </thead>
-              <tbody id="devices-table-body"></tbody>
-            </table>
-          </div>
+          <div id="user-management-section">
+            <!-- User Accounts Creation -->
+            <div class="card settings-card">
+              <h2 id="settings-heading" data-i18n="h2ExistAcc">Existing accounts</h2>
+              <p id="settings-info" class="info-text" data-i18n="adminSettingsInfo">Create accounts and manage roles for admin, manager, and user access.</p>
+              <form id="create-user-form">
+                <label>
+                  <span data-i18n="lblEmail">Email (optional for local DB, required for Supabase)</span>
+                  <input name="email" id="new-email" type="email" />
+                </label>
+                <label>
+                  <span data-i18n="lblUser">Username</span>
+                  <input name="username" id="new-username" type="text" required />
+                </label>
+                <label>
+                  <span data-i18n="lblPass">Password</span>
+                  <input name="password" id="new-password" type="password" required />
+                </label>
+                <label>
+                  <span data-i18n="lblRole">Role</span>
+                  <select name="role" id="new-role" required>
+                    <option value="admin" data-i18n="roleAdmin">Admin</option>
+                    <option value="manager" data-i18n="roleManager">Manager</option>
+                    <option value="user" data-i18n="roleUser" selected>User</option>
+                  </select>
+                </label>
+                <button type="submit" id="create-account-button" class="button button-primary" data-i18n="btnCreateAcc">Create Account</button>
+              </form>
+              <div id="settings-error" class="error-text hidden"></div>
+            </div>
 
-          <!-- Account Table -->
-          <div class="card settings-card">
-            <h2 data-i18n="h2ExistAcc">Existing accounts</h2>
-            <table class="user-table">
-              <thead>
-                <tr>
-                  <th data-i18n="thId">ID</th>
-                  <th data-i18n="thUsername">Username</th>
-                  <th data-i18n="thRole">Role</th>
-                  <th data-i18n="thActions">Actions</th>
-                </tr>
-              </thead>
-              <tbody id="users-table-body"></tbody>
-            </table>
+            <!-- Account Table -->
+            <div class="card settings-card">
+              <h2 data-i18n="h2ExistAcc">Existing accounts</h2>
+              <table class="user-table">
+                <thead>
+                  <tr>
+                    <th data-i18n="thId">ID</th>
+                    <th data-i18n="thUsername">Username</th>
+                    <th data-i18n="thRole">Role</th>
+                    <th data-i18n="thActions">Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="users-table-body"></tbody>
+              </table>
+            </div>
           </div>
         </section>
       </main>
