@@ -53,16 +53,18 @@ window.loadSettingsData = async function() {
       const fiveMinutesAgo = Date.now() - (5 * 60 * 1000);
       activeDeviceIds = logs
         .filter(log => new Date(log.created_at).getTime() > fiveMinutesAgo)
-        .map(log => log.device_id || '');
+        .map(log => window.appState.getDeviceId(log));
     }
 
     // Vercel Path Safe: api/devices
     const resDevices = await fetch('api/devices', { headers: { 'Authorization': `Bearer ${token}` } });
     if (resDevices.ok) {
       const devices = await resDevices.json();
+      window.appState.setRegisteredDevices(devices);
       if(devicesTableBody) {
         devicesTableBody.innerHTML = devices.map(d => {
-          const isOnline = activeDeviceIds.includes(d.device_key || d.id);
+          const deviceKey = window.appState.getDeviceKey(d);
+          const isOnline = activeDeviceIds.includes(deviceKey);
           const statusBadge = isOnline 
             ? `<span class="badge" style="background-color: #28a745; color: white; padding: 4px 8px; border-radius: 4px;">${onlineText}</span>`
             : `<span class="badge" style="background-color: #6c757d; color: white; padding: 4px 8px; border-radius: 4px;">${offlineText}</span>`;
@@ -70,7 +72,7 @@ window.loadSettingsData = async function() {
           return `
             <tr>
               <td>${d.id}</td>
-              <td><code style="color: #01919d; font-weight: bold;">${d.device_key || d.id}</code></td>
+              <td><code style="color: #01919d; font-weight: bold;">${deviceKey}</code></td>
               <td>${d.name || unnamedSensorText}</td>
               <td>${d.created_at ? new Date(d.created_at).toLocaleString() : neverText}</td>
               <td>${statusBadge}</td>

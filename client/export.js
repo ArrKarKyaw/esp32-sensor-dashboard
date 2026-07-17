@@ -25,7 +25,7 @@ window.exportToCSV = async function() {
     
     exportData.reverse().forEach(row => {
       let time = new Date(row.created_at).toLocaleString();
-      let devId = row.device_id || '';
+      let devId = window.appState.getDeviceId(row);
       csvContent += `"${time}","${devId}",${row.temperature || 0},${row.humidity || 0},"${row.door_status || ''}",${row.accel_x || 0},${row.accel_y || 0},${row.accel_z || 0}\n`;
     });
 

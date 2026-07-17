@@ -1,16 +1,3 @@
-// 🎯 Global Variables 
-window.allSensorData = []; 
-window.historyChart = null;
-
-// 🌐 5-Language JSON Dictionary System
-let languages = null;
-
-// 🛠️ Helper to Safely get Device ID
-function getDevId(item) {
-  if (!item) return '';
-  return item.device_id || '';
-}
-
 // ========================================================
 // 🚀 REAL-TIME MULTI-ESP LIFT LIST & REFRESH LOGIC
 // ========================================================
@@ -22,13 +9,15 @@ window.updateDashboardData = async function() {
     const rawData = await response.json();
 
     if (rawData && rawData.length > 0) {
-      window.allSensorData = rawData
-        .filter(item => getDevId(item) !== '')
+      const normalizedData = rawData
+        .filter(item => window.appState.getDeviceId(item) !== '')
         .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
-      if (window.allSensorData.length > 0) {
-        renderElevatorList(window.allSensorData);
-        updateDeviceSelectOptions(window.allSensorData);
+      window.appState.setAllSensorData(normalizedData);
+
+      if (normalizedData.length > 0) {
+        renderElevatorList(normalizedData);
+        updateDeviceSelectOptions(normalizedData);
         applyFiltersAndRender();
       }
     }
@@ -37,31 +26,23 @@ window.updateDashboardData = async function() {
   }
 }
 
-// global dynamic devices array (ဒါက အပေါ်မှာ api/devices ကနေ fetch လုပ်ပြီး သိမ်းထားတဲ့ စာရင်းဖြစ်ရပါမယ်)
-// ဥပမာ - window.registeredDevices = await resDevices.json();
-
 function renderElevatorList(data) {
   const listContainer = document.getElementById('lift-status-list');
   if (!listContainer) return;
 
-  // ❌ ကုဒ်အဟောင်း: data logs ထဲကပဲ device_key ရှာတာ
-  // const deviceKeys = [...new Set(data.map(item => getDevId(item)).filter(Boolean))];
-
-  //  ပြင်ဆင်ချက်စနစ်သစ်: မှတ်ပုံတင်ထားတဲ့ devices အားလုံးရဲ့ key တွေကို သုံးမယ်
-  // (အကယ်၍ window.registeredDevices မရှိရင် လက်ရှိ `devices` array variable ကို ထည့်ပါ)
-  const allDevices = window.registeredDevices || []; 
+  // Prefer the registered device list so offline devices remain visible in the UI.
+  const allDevices = window.appState.getRegisteredDevices();
   
   if (allDevices.length === 0) {
     // စနစ်ထဲမှာ device မရှိသေးရင် logs ထဲကပဲ fallback အနေနဲ့ ယူမယ်
-    var deviceKeys = [...new Set(data.map(item => getDevId(item)).filter(Boolean))];
+    var deviceKeys = [...new Set(data.map(item => window.appState.getDeviceId(item)).filter(Boolean))];
   } else {
-    var deviceKeys = allDevices.map(d => d.device_key || d.id);
+    var deviceKeys = allDevices.map((device) => window.appState.getDeviceKey(device)).filter(Boolean);
   }
 
   listContainer.innerHTML = ""; 
 
-  const currentLang = (document.getElementById('language-select')?.value || 'en').toLowerCase();
-  const dict = (window.languages && window.languages[currentLang]) ? window.languages[currentLang] : null;
+  const dict = window.appState.getDictionary();
   
   const tempLabel = dict?.tempLabel || "Temp";
   const doorLabel = dict?.doorLabel || "Door";
@@ -69,7 +50,7 @@ function renderElevatorList(data) {
 
   deviceKeys.forEach(devId => {
     // ထို device ရဲ့ နောက်ဆုံးရ log ဒေတာ ရှိမရှိ ရှာမယ်
-    const devData = data.find(item => getDevId(item) === devId);
+    const devData = data.find(item => window.appState.getDeviceId(item) === devId);
     
     // ဒေတာ ရှိရင် မူရင်းအတိုင်းပြမယ်၊ မရှိရင် Offline State ပြမယ်
     const isOpen = devData ? devData.door_status === "Open" : false;
@@ -115,11 +96,11 @@ function updateDeviceSelectOptions(data) {
   if (!deviceSelect) return;
   const currentSelected = deviceSelect.value;
   
-  const currentLang = (document.getElementById('language-select')?.value || 'en').toLowerCase();
-  const allDevicesText = (languages && languages[currentLang]) ? languages[currentLang].allDevices : "All devices";
+  const dict = window.appState.getDictionary();
+  const allDevicesText = dict?.allDevices || "All devices";
   
   deviceSelect.innerHTML = `<option value="" style="color: #222222; background-color: #ffffff;">-- ${allDevicesText} --</option>`;
-  const uniqueDevices = [...new Set(data.map(item => getDevId(item)).filter(Boolean))];
+  const uniqueDevices = [...new Set(data.map(item => window.appState.getDeviceId(item)).filter(Boolean))];
   uniqueDevices.forEach(devKey => {
     let opt = document.createElement('option');
     opt.value = devKey;
@@ -139,13 +120,8 @@ function updateHistoryChart(deviceId, sensorLogs) {
 
   const reversedLogs = [...sensorLogs].slice(0, 20).reverse();
   const labels = reversedLogs.map(log => new Date(log.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
-  if (window.historyChart) {
-    window.historyChart.destroy();
-    window.historyChart = null;
-  }
-
-  const currentLang = (document.getElementById('language-select')?.value || 'en').toLowerCase();
-  const dict = (languages && languages[currentLang]) ? languages[currentLang] : null;
+  window.appState.clearHistoryChart();
+  const dict = window.appState.getDictionary();
   
   const labelTemp = (dict?.tempLabel || 'Temperature') + ' (°C)';
   const labelHum = (dict?.humLabel || 'Humidity') + ' (%)';
@@ -164,28 +140,29 @@ function updateHistoryChart(deviceId, sensorLogs) {
     ];
   }
 
-  window.historyChart = new Chart(ctx, {
+  const historyChart = new Chart(ctx, {
     type: 'line',
     data: { labels: labels, datasets: datasets },
     options: { responsive: true }
   });
+  window.appState.setHistoryChart(historyChart);
 }
 
 // ========================================================
 // 🧼 FILTER AND UI RENDER LOGIC
 // ========================================================
 function applyFiltersAndRender() {
-  let filteredData = [...window.allSensorData];
+  let filteredData = [...window.appState.getAllSensorData()];
   const selectedDevice = document.getElementById('device-select')?.value;
 
-  renderElevatorList(window.allSensorData);
+  renderElevatorList(window.appState.getAllSensorData());
 
   if (!selectedDevice) {
     resetUIElements();
     return;
   }
   
-  filteredData = filteredData.filter(item => getDevId(item) === selectedDevice);
+  filteredData = filteredData.filter(item => window.appState.getDeviceId(item) === selectedDevice);
 
   const startDateStr = document.getElementById('start-date')?.value; 
   const endDateStr = document.getElementById('end-date')?.value;
@@ -204,8 +181,7 @@ function applyFiltersAndRender() {
     });
   }
 
-  const currentLang = (document.getElementById('language-select')?.value || 'en').toLowerCase();
-  const dict = (languages && languages[currentLang]) ? languages[currentLang] : null;
+  const dict = window.appState.getDictionary();
 
   if (filteredData.length > 0) {
     const latest = filteredData[0];
@@ -220,7 +196,8 @@ function applyFiltersAndRender() {
       document.getElementById('pressure-value').innerText = (latest.pressure && latest.pressure > 0) ? latest.pressure.toFixed(1) + " hPa" : "-- hPa";
     }
     if (document.getElementById('other-value')) {
-      document.getElementById('other-value').innerText = getDevId(latest) ? `Active: ${getDevId(latest).toUpperCase()}` : "--";
+      const activeDeviceId = window.appState.getDeviceId(latest);
+      document.getElementById('other-value').innerText = activeDeviceId ? `Active: ${activeDeviceId.toUpperCase()}` : "--";
     }
     if (document.getElementById('door-status-value')) {
       document.getElementById('door-status-value').innerText = latest.door_status || "--";
@@ -326,6 +303,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   const langSelect = document.getElementById('language-select') || document.getElementById('lang-select') || document.querySelector('select:not([id="device-select"])');
   
   const changeLanguageSystem = (selectedLangCode) => {
+    const languages = window.appState.getLanguages();
     if (!languages) return; 
     
     const code = selectedLangCode.toLowerCase();
@@ -349,8 +327,8 @@ window.addEventListener('DOMContentLoaded', async () => {
       mainTitleEl.textContent = dict.mainTitle;
     }
 
-    if (window.allSensorData && window.allSensorData.length > 0) {
-      updateDeviceSelectOptions(window.allSensorData);
+    if (window.appState.getAllSensorData().length > 0) {
+      updateDeviceSelectOptions(window.appState.getAllSensorData());
     }
 
     localStorage.setItem('selectedLanguage', code);
@@ -364,8 +342,8 @@ window.addEventListener('DOMContentLoaded', async () => {
     const langResponse = await fetch('language.json?cache_bust=' + Date.now()); 
     if (!langResponse.ok) throw new Error("language.json loading failed");
     
-    languages = await langResponse.json();
-    window.languages = languages; // 👈 🔐 FIX: auth.js နှင့် settings.js မှ လှမ်းသုံးနိုင်ရန် window object ပေါ်တင်ပေးခြင်း
+    const languages = await langResponse.json();
+    window.appState.setLanguages(languages);
 
     if (langSelect) {
       langSelect.addEventListener('change', (e) => {
