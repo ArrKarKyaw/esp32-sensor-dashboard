@@ -50,6 +50,13 @@ function getStatusMeta(status) {
   return statuses[status] || statuses.offline;
 }
 
+function syncThemeToggleButton() {
+  const themeToggleBtn = document.getElementById('theme-toggle');
+  if (!themeToggleBtn) return;
+
+  themeToggleBtn.textContent = document.body.classList.contains('light-mode') ? 'Dark' : 'Light';
+}
+
 function getDeviceHealth(record) {
   if (!record?.created_at) {
     return { status: 'offline', ...getStatusMeta('offline') };
@@ -230,8 +237,6 @@ function updateDeviceSelectOptions(data) {
     let opt = document.createElement('option');
     opt.value = devKey;
     opt.innerHTML = devKey.toUpperCase();
-    opt.style.color = "#222222";          
-    opt.style.backgroundColor = "#ffffff"; 
     deviceSelect.appendChild(opt);
   });
   if (currentSelected) {
@@ -251,24 +256,71 @@ function updateHistoryChart(deviceId, sensorLogs) {
   const labelTemp = (dict?.tempLabel || 'Temperature') + ' (°C)';
   const labelHum = (dict?.humLabel || 'Humidity') + ' (%)';
 
-  let datasets = [];
-  if (deviceId === 'lift-01' || deviceId === 'lift-03') {
-    datasets = [
-      { label: labelTemp, data: reversedLogs.map(log => log.temperature || null), borderColor: '#ff6384', borderWidth: 2, tension: 0.2 },
-      { label: labelHum, data: reversedLogs.map(log => log.humidity || null), borderColor: '#36a2eb', borderWidth: 2, tension: 0.2 }
-    ];
-  } else if (deviceId === 'lift-02') {
-    datasets = [
-      { label: 'Accel X', data: reversedLogs.map(log => log.accel_x || 0), borderColor: '#ff6384', borderWidth: 2, tension: 0.2 },
-      { label: 'Accel Y', data: reversedLogs.map(log => log.accel_y || 0), borderColor: '#36a2eb', borderWidth: 2, tension: 0.2 },
-      { label: 'Accel Z', data: reversedLogs.map(log => log.accel_z || 0), borderColor: '#4bc0c0', borderWidth: 2, tension: 0.2 }
-    ];
+  const labelPressure = (dict?.pressLabel || 'Pressure') + ' (hPa)';
+  const metricConfigs = [
+    { key: 'temperature', label: labelTemp, color: '#38bdf8' },
+    { key: 'humidity', label: labelHum, color: '#22c55e' },
+    { key: 'pressure', label: labelPressure, color: '#f59e0b' },
+    { key: 'accel_x', label: 'Accel X', color: '#f97316' },
+    { key: 'accel_y', label: 'Accel Y', color: '#8b5cf6' },
+    { key: 'accel_z', label: 'Accel Z', color: '#ef4444' },
+  ];
+
+  const datasets = metricConfigs
+    .filter(({ key }) => reversedLogs.some((log) => log[key] !== null && log[key] !== undefined))
+    .map(({ key, label, color }) => ({
+      label,
+      data: reversedLogs.map((log) => log[key] ?? null),
+      borderColor: color,
+      backgroundColor: `${color}22`,
+      borderWidth: 2,
+      tension: 0.28,
+      pointRadius: 2,
+      pointHoverRadius: 4,
+      spanGaps: true,
+    }));
+
+  if (!datasets.length) {
+    setChartEmptyState(dict?.chartEmptyState || 'Select a device to view recent history.');
+    return;
   }
 
   const historyChart = new Chart(ctx, {
     type: 'line',
     data: { labels: labels, datasets: datasets },
-    options: { responsive: true }
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: {
+        mode: 'index',
+        intersect: false,
+      },
+      plugins: {
+        legend: {
+          labels: {
+            color: document.body.classList.contains('light-mode') ? '#334155' : '#cbd5e1',
+          },
+        },
+      },
+      scales: {
+        x: {
+          ticks: {
+            color: document.body.classList.contains('light-mode') ? '#64748b' : '#94a3b8',
+          },
+          grid: {
+            color: document.body.classList.contains('light-mode') ? 'rgba(148, 163, 184, 0.15)' : 'rgba(148, 163, 184, 0.08)',
+          },
+        },
+        y: {
+          ticks: {
+            color: document.body.classList.contains('light-mode') ? '#64748b' : '#94a3b8',
+          },
+          grid: {
+            color: document.body.classList.contains('light-mode') ? 'rgba(148, 163, 184, 0.15)' : 'rgba(148, 163, 184, 0.08)',
+          },
+        },
+      },
+    }
   });
   window.appState.setHistoryChart(historyChart);
 }
@@ -394,12 +446,6 @@ window.addEventListener('DOMContentLoaded', async () => {
     });
   }
 
-  const deviceSelectEl = document.getElementById('device-select');
-  if (deviceSelectEl) {
-    deviceSelectEl.style.color = "#222222";
-    deviceSelectEl.style.backgroundColor = "#ffffff";
-  }
-
   document.getElementById('filter-button')?.addEventListener('click', (e) => {
     e.preventDefault(); 
     applyFiltersAndRender();
@@ -416,15 +462,19 @@ window.addEventListener('DOMContentLoaded', async () => {
 
   // 🌓 Theme Toggle
   const themeToggleBtn = document.getElementById('theme-toggle');
+  const savedTheme = localStorage.getItem('theme');
+  if (savedTheme === 'light') {
+    document.body.classList.add('light-mode');
+  }
+  syncThemeToggleButton();
+
   if (themeToggleBtn) {
     themeToggleBtn.addEventListener('click', () => {
       document.body.classList.toggle('light-mode');
-      if (document.body.classList.contains('light-mode')) {
-        localStorage.setItem('theme', 'light');
-        themeToggleBtn.textContent = 'Dark';
-      } else {
-        localStorage.setItem('theme', 'dark');
-        themeToggleBtn.textContent = 'Light';
+      localStorage.setItem('theme', document.body.classList.contains('light-mode') ? 'light' : 'dark');
+      syncThemeToggleButton();
+      if (window.appState.getAllSensorData().length > 0) {
+        applyFiltersAndRender();
       }
     });
   }
@@ -444,11 +494,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     document.querySelectorAll('[data-i18n]').forEach(el => {
       const key = el.getAttribute('data-i18n');
       if (dict[key]) {
-        if (el.id === 'export-csv' || el.id === 'export-json') {
-          el.textContent = `📥 ${dict[key]}`; 
-        } else {
-          el.textContent = dict[key];
-        }
+        el.textContent = dict[key];
       }
     });
 
