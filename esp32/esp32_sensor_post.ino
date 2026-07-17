@@ -5,7 +5,7 @@
 // Update these values with your own network and server details.
 const char* ssid = "YOUR_WIFI_SSID";
 const char* password = "YOUR_WIFI_PASSWORD";
-const char* serverUrl = "http://192.168.1.100:3000/sensor-data";
+const char* serverUrl = "http://192.168.1.100:3000/api/sensor";
 
 #define DHTPIN 4
 #define DHTTYPE DHT22
@@ -44,15 +44,18 @@ void loop() {
   }
 
   float pressure = 1013.25; // Example extra sensor value.
-  String deviceKey = WiFi.macAddress();
-  String deviceName = "ESP32-" + deviceKey.substring(deviceKey.length() - 5);
+  String deviceId = WiFi.macAddress();
+  String deviceName = "ESP32-" + deviceId.substring(deviceId.length() - 5);
   String payload = "{";
-  payload += "\"deviceKey\":\"" + deviceKey + "\",";
-  payload += "\"deviceName\":\"" + deviceName + "\",";
+  payload += "\"device_id\":\"" + deviceId + "\",";
+  payload += "\"device_name\":\"" + deviceName + "\",";
   payload += "\"temperature\":" + String(temperature, 2) + ",";
   payload += "\"humidity\":" + String(humidity, 2) + ",";
   payload += "\"pressure\":" + String(pressure, 2) + ",";
-  payload += "\"other\":\"ESP32 live reading\"";
+  payload += "\"accel_x\":0,";
+  payload += "\"accel_y\":0,";
+  payload += "\"accel_z\":0,";
+  payload += "\"door_status\":\"Closed\"";
   payload += "}";
 
   if (WiFi.status() == WL_CONNECTED) {

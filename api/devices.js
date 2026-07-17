@@ -1,4 +1,5 @@
 const { supabase } = require('./db');
+const { normalizeDevicePayload } = require('./_lib/contracts');
 
 // Vercel သေချာပေါက် ဖတ်လို့ရမည့် Standard Function Export 
 async function handler(req, res) {
@@ -28,15 +29,15 @@ async function handler(req, res) {
   // 🎯 ၂။ [POST METHOD]: စက်အသစ်ဆောက်ခြင်း
   if (req.method === 'POST') {
     try {
-      const { deviceKey, name } = req.body;
-      if (!deviceKey) return res.status(400).json({ error: "deviceKey is required" });
+      const normalizedDevice = normalizeDevicePayload(req.body);
+      if (!normalizedDevice.device_key) return res.status(400).json({ error: "deviceKey is required" });
 
       const { data, error } = await supabase
         .from('devices')
         .insert([{ 
-          id: deviceKey,
-          device_key: deviceKey,
-          name: name || 'Main Lobby Sensor' 
+          id: normalizedDevice.device_key,
+          device_key: normalizedDevice.device_key,
+          name: normalizedDevice.name || 'Main Lobby Sensor' 
         }])
         .select();
 

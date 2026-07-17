@@ -8,7 +8,7 @@ let languages = null;
 // 🛠️ Helper to Safely get Device ID
 function getDevId(item) {
   if (!item) return '';
-  return item.device_id || item.ce_id || '';
+  return item.device_id || '';
 }
 
 // ========================================================

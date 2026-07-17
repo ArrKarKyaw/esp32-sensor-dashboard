@@ -1,4 +1,5 @@
 const { supabase } = require('./db');
+const { normalizeDevicePayload, normalizeSensorPayload, normalizeSensorRecord } = require('./_lib/contracts');
 
 module.exports = async (req, res) => {
   // CORS Headers သတ်မှတ်ချက်များ (ESP32 နှင့် Frontend အတွက်)
@@ -39,46 +40,41 @@ module.exports = async (req, res) => {
   // --------------------------------------------------------
   if (req.method === 'POST') {
     try {
-      // Admin Panel က စက်အသစ်ဆောက်တာလား (device_key ပါလာမလား) စစ်ဆေးခြင်း
-      if (req.body.device_key) {
-        const { device_key, name } = req.body;
+      const normalizedDevice = normalizeDevicePayload(req.body);
+
+      // Backward-compatible device registration handling.
+      if (normalizedDevice.device_key && req.body.temperature === undefined && req.body.humidity === undefined && req.body.pressure === undefined) {
         const { data: devData, error: devError } = await supabase
           .from('devices')
-          .insert([{ id: device_key, device_key, name: name || 'ESP32 Device' }])
+          .insert([{
+            id: normalizedDevice.device_key,
+            device_key: normalizedDevice.device_key,
+            name: normalizedDevice.name,
+          }])
           .select();
 
         if (devError) return res.status(400).json({ error: devError.message });
         return res.status(201).json(devData[0]);
       }
 
-      // ESP32 က လှမ်းပို့သည့် Sensor ဒေတာများကို သိမ်းဆည်းခြင်း
-      const { 
-        device_id, 
-        temperature, 
-        humidity, 
-        pressure, 
-        accel_x, 
-        accel_y, 
-        accel_z, 
-        door_status 
-      } = req.body;
+      const normalizedSensor = normalizeSensorPayload(req.body);
 
-      if (!device_id) {
+      if (!normalizedSensor.device_id) {
         return res.status(400).json({ error: "device_id is required" });
       }
 
       const insertData = {
-        device_id: device_id, 
-        temperature: temperature !== undefined ? parseFloat(temperature) : null,
-        humidity: humidity !== undefined ? parseFloat(humidity) : null,
-        accel_x: accel_x !== undefined ? parseFloat(accel_x) : null,
-        accel_y: accel_y !== undefined ? parseFloat(accel_y) : null,
-        accel_z: accel_z !== undefined ? parseFloat(accel_z) : null,
-        door_status: door_status || 'Unknown'
+        device_id: normalizedSensor.device_id,
+        temperature: normalizedSensor.temperature,
+        humidity: normalizedSensor.humidity,
+        accel_x: normalizedSensor.accel_x,
+        accel_y: normalizedSensor.accel_y,
+        accel_z: normalizedSensor.accel_z,
+        door_status: normalizedSensor.door_status,
       };
 
-      if (pressure !== undefined) {
-        insertData.pressure = parseFloat(pressure);
+      if (normalizedSensor.pressure !== null) {
+        insertData.pressure = normalizedSensor.pressure;
       }
 
       const { data, error } = await supabase
@@ -90,7 +86,7 @@ module.exports = async (req, res) => {
         return res.status(400).json({ error: error.message });
       }
 
-      return res.status(200).json(data);
+      return res.status(200).json((data || []).map(normalizeSensorRecord));
 
     } catch (err) {
       return res.status(500).json({ error: err.message });

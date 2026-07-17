@@ -1,4 +1,5 @@
 const { supabase } = require('./db');
+const { normalizeSensorRecord } = require('./_lib/contracts');
 
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -43,7 +44,7 @@ module.exports = async (req, res) => {
       return res.status(400).json({ error: error.message });
     }
 
-    return res.status(200).json(data);
+    return res.status(200).json((data || []).map(normalizeSensorRecord));
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }

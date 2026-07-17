@@ -53,7 +53,7 @@ window.loadSettingsData = async function() {
       const fiveMinutesAgo = Date.now() - (5 * 60 * 1000);
       activeDeviceIds = logs
         .filter(log => new Date(log.created_at).getTime() > fiveMinutesAgo)
-        .map(log => log.device_id || log.ce_id || '');
+        .map(log => log.device_id || '');
     }
 
     // Vercel Path Safe: api/devices
