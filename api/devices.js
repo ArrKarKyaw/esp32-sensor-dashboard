@@ -1,4 +1,5 @@
 const { supabase } = require('./db');
+const { requireAuth } = require('./_lib/auth');
 const { normalizeDevicePayload } = require('./_lib/contracts');
 
 // Vercel သေချာပေါက် ဖတ်လို့ရမည့် Standard Function Export 
@@ -8,6 +9,10 @@ async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
   
   if (req.method === 'OPTIONS') return res.status(200).end();
+
+  const allowedRoles = ['admin', 'manager'];
+  const currentUser = requireAuth(req, res, { roles: allowedRoles });
+  if (!currentUser) return;
 
   // 🎯 ၁။ [GET METHOD]: စက်ပစ္စည်းစာရင်း တောင်းခြင်း
   if (req.method === 'GET') {

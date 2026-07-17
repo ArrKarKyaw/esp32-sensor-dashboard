@@ -1,5 +1,6 @@
+const bcrypt = require('bcryptjs');
 const { supabase } = require('./db');
-const jwt = require('jsonwebtoken');
+const { requireAuth } = require('./_lib/auth');
 
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -9,20 +10,8 @@ module.exports = async (req, res) => {
   if (req.method === 'OPTIONS') return res.status(200).end();
 
   try {
-    // 🔐 ၁။ Authorization Token စစ်ဆေးခြင်း (GET, POST, DELETE အားလုံးအတွက်)
-    const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({ error: 'Unauthorized: No token provided' });
-    }
-
-    const token = authHeader.split(' ')[1];
-    const secretKey = process.env.JWT_SECRET || 'fallback_secret_key_123';
-    
-    try {
-      jwt.verify(token, secretKey);
-    } catch (e) {
-      return res.status(401).json({ error: 'Unauthorized: Invalid token' });
-    }
+    const currentUser = requireAuth(req, res, { roles: ['admin'] });
+    if (!currentUser) return;
 
     // --------------------------------------------------------
     // 🎯 [GET METHOD]: Existing Accounts စာရင်းထုတ်ပေးရန်
@@ -48,10 +37,17 @@ module.exports = async (req, res) => {
         return res.status(400).json({ error: 'Username and password are required' });
       }
 
+      const normalizedRole = role ? role.toLowerCase() : 'user';
+      if (!['admin', 'manager', 'user'].includes(normalizedRole)) {
+        return res.status(400).json({ error: 'Invalid role' });
+      }
+
+      const hashedPassword = await bcrypt.hash(password, 10);
+
       const insertData = { 
         username: username, 
-        password: password, 
-        role: role ? role.toLowerCase() : 'user' 
+        password: hashedPassword, 
+        role: normalizedRole 
       };
 
       if (email) insertData.email = email;
@@ -71,7 +67,7 @@ module.exports = async (req, res) => {
       return res.status(201).json({ 
         id: createdUser?.id || Date.now(), 
         username: username, 
-        role: role 
+        role: normalizedRole 
       });
     }
 
