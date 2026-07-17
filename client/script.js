@@ -7,9 +7,7 @@ window.updateDashboardData = async function() {
     setDashboardStatus('loading');
   }
   try {
-    const response = await fetch('/api/get-sensor');
-    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-    const rawData = await response.json();
+    const rawData = await window.apiClient.getJson('/api/get-sensor');
 
     if (rawData && rawData.length > 0) {
       const normalizedData = rawData

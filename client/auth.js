@@ -59,19 +59,8 @@ if (window.loginForm) {
     const currentLang = document.getElementById('language-select')?.value || 'en';
     
     try {
-      // Vercel Path Safe: api/login
-      const response = await fetch('api/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password })
-      });
-      
-      if (!response.ok) throw new Error('loginFailed');
-   
-      const data = await response.json();
-      localStorage.setItem('token', data.token);
-      localStorage.setItem('username', data.username);
-      localStorage.setItem('role', data.role || 'user'); 
+      const data = await window.apiClient.postJson('api/login', { username, password });
+      window.apiClient.setSession(data);
       window.showDashboard();
     } catch (err) {
       if (window.loginError) { 
@@ -91,7 +80,7 @@ window.showDashboard = function() {
   
   updateUserGreeting();
   
-  const userRole = localStorage.getItem('role');
+  const userRole = window.apiClient.getRole();
   if (window.settingsButton && (userRole === 'admin' || userRole === 'manager')) {
     window.settingsButton.classList.remove('hidden');
   }
@@ -103,7 +92,7 @@ window.showDashboard = function() {
 
 if (window.logoutButton) {
   window.logoutButton.addEventListener('click', () => {
-    localStorage.clear();
+    window.apiClient.clearSession();
     window.location.reload();
   });
 }
@@ -113,7 +102,7 @@ if (window.logoutButton) {
  */
 function updateUserGreeting() {
   if (!window.usernameLabel) return;
-  const username = localStorage.getItem('username');
+  const username = window.apiClient.getUsername();
   if (!username) return;
 
   const currentLang = document.getElementById('language-select')?.value || 'en';

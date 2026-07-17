@@ -2,7 +2,7 @@
 window.loadSettingsData = async function() {
   const usersTableBody = document.getElementById('users-table-body');
   const devicesTableBody = document.getElementById('devices-table-body');
-  const token = localStorage.getItem('token');
+  const token = window.apiClient.getToken();
 
   if (!token) {
     window.appState.setRegisteredDevices([]);
@@ -22,10 +22,8 @@ window.loadSettingsData = async function() {
   const neverText = getTranslation('neverSeen', currentLang);
 
   try {
-    // Vercel Path Safe: api/users
-    const resUsers = await fetch('api/users', { headers: { 'Authorization': `Bearer ${token}` } });
-    if (resUsers.ok) {
-      const users = await resUsers.json();
+    if (window.apiClient.canManageUsers()) {
+      const users = await window.apiClient.getJson('api/users', { auth: true });
       if(usersTableBody) {
         usersTableBody.innerHTML = users.map(u => {
           // Role များကို i18n အလိုက် ဘာသာပြန်ခြင်း
@@ -48,25 +46,22 @@ window.loadSettingsData = async function() {
           `;
         }).join('');
       }
+    } else if (usersTableBody) {
+      usersTableBody.innerHTML = '';
     }
   } catch (err) { console.error("Error loading users:", err); }
 
   try {
     // Vercel Path Safe: api/get-sensor
-    const resLogs = await fetch('api/get-sensor');
+    const logs = await window.apiClient.getJson('api/get-sensor');
     let activeDeviceIds = [];
-    if (resLogs.ok) {
-      const logs = await resLogs.json();
-      const fiveMinutesAgo = Date.now() - (5 * 60 * 1000);
-      activeDeviceIds = logs
-        .filter(log => new Date(log.created_at).getTime() > fiveMinutesAgo)
-        .map(log => window.appState.getDeviceId(log));
-    }
+    const fiveMinutesAgo = Date.now() - (5 * 60 * 1000);
+    activeDeviceIds = logs
+      .filter(log => new Date(log.created_at).getTime() > fiveMinutesAgo)
+      .map(log => window.appState.getDeviceId(log));
 
-    // Vercel Path Safe: api/devices
-    const resDevices = await fetch('api/devices', { headers: { 'Authorization': `Bearer ${token}` } });
-    if (resDevices.ok) {
-      const devices = await resDevices.json();
+    if (window.apiClient.canManageDevices()) {
+      const devices = await window.apiClient.getJson('api/devices', { auth: true });
       window.appState.setRegisteredDevices(devices);
       if(devicesTableBody) {
         devicesTableBody.innerHTML = devices.map(d => {
@@ -92,6 +87,8 @@ window.loadSettingsData = async function() {
           `;
         }).join('');
       }
+    } else if (devicesTableBody) {
+      devicesTableBody.innerHTML = '';
     }
   } catch (err) { console.error("Error loading devices:", err); }
 }
@@ -109,16 +106,10 @@ window.initSettingsEvents = function() {
       const username = document.getElementById('new-username').value.trim();
       const password = document.getElementById('new-password').value;
       const role = document.getElementById('new-role').value;
-      const token = localStorage.getItem('token');
       const currentLang = document.getElementById('language-select')?.value || 'en';
 
       try {
-        const response = await fetch('api/users', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-          body: JSON.stringify({ username, password, role })
-        });
-        if (!response.ok) { const errData = await response.json(); throw new Error(errData.error || 'Failed to create user'); }
+        await window.apiClient.postJson('api/users', { username, password, role }, { auth: true });
         createUserForm.reset();
         if (settingsError) { 
           settingsError.textContent = getTranslation('userSuccess', currentLang); 
@@ -137,16 +128,10 @@ window.initSettingsEvents = function() {
       e.preventDefault();
       const deviceKey = document.getElementById('new-device-key').value.trim();
       const name = document.getElementById('new-device-name').value.trim();
-      const token = localStorage.getItem('token');
       const currentLang = document.getElementById('language-select')?.value || 'en';
 
       try {
-        const response = await fetch('api/devices', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-          body: JSON.stringify({ deviceKey, name })
-        });
-        if (!response.ok) { const errData = await response.json(); throw new Error(errData.error || 'Failed to create device'); }
+        await window.apiClient.postJson('api/devices', { deviceKey, name }, { auth: true });
         createDeviceForm.reset();
         if (deviceError) { 
           deviceError.textContent = getTranslation('deviceSuccess', currentLang); 
@@ -164,16 +149,14 @@ window.initSettingsEvents = function() {
 window.deleteUser = async (id) => {
   const currentLang = document.getElementById('language-select')?.value || 'en';
   if(!confirm(getTranslation('confirmDeleteUser', currentLang))) return;
-  const token = localStorage.getItem('token');
-  await fetch(`api/users?id=${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
+  await window.apiClient.deleteJson(`api/users?id=${id}`, { auth: true });
   window.loadSettingsData();
 };
 
 window.deleteDevice = async (id) => {
   const currentLang = document.getElementById('language-select')?.value || 'en';
   if(!confirm(getTranslation('confirmDeleteDevice', currentLang))) return;
-  const token = localStorage.getItem('token');
-  await fetch(`api/devices?id=${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
+  await window.apiClient.deleteJson(`api/devices?id=${id}`, { auth: true });
   window.loadSettingsData();
 };
 
@@ -244,7 +227,7 @@ window.addEventListener('languageChanged', (e) => {
   }
 
   // Settings tables only need refreshing for authenticated users.
-  if (localStorage.getItem('token') && window.settingsView && !window.settingsView.classList.contains('hidden')) {
+  if (window.apiClient.getToken() && window.settingsView && !window.settingsView.classList.contains('hidden')) {
     window.loadSettingsData();
   }
 });
