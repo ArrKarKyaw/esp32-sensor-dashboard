@@ -1,5 +1,19 @@
 node_modules/
-server/data/sensors.db
+
+# Environment and local secrets
 .env
-npm-debug.log
+.env.*
+!.env.example
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# OS and editor files
 .DS_Store
+Thumbs.db
+.vscode/
+.idea/

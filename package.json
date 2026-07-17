@@ -1,7 +1,13 @@
 {
+  "name": "esp32-sensor-dashboard-local",
+  "private": true,
+  "scripts": {
+    "dev": "node ./dev-server.js"
+  },
   "dependencies": {
     "bcryptjs": "^3.0.3",
     "dotenv": "^17.4.2",
+    "express": "^5.1.0",
     "serverless-http": "^4.0.0"
   }
 }
