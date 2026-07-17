@@ -187,28 +187,24 @@ function renderElevatorList(data) {
     // ထို device ရဲ့ နောက်ဆုံးရ log ဒေတာ ရှိမရှိ ရှာမယ်
     const devData = data.find(item => window.appState.getDeviceId(item) === devId);
     const healthMeta = getDeviceHealth(devData);
-    
+
     // ဒေတာ ရှိရင် မူရင်းအတိုင်းပြမယ်၊ မရှိရင် Offline State ပြမယ်
     const isOpen = devData ? devData.door_status === "Open" : false;
-    // Offline ဖြစ်နေရင် မီးခိုးရောင် (#6c757d) ပြမယ်
-    const statusColor = devData ? (isOpen ? "#ff6384" : "#4bc0c0") : "#6c757d";
 
     const liftCard = document.createElement('div');
-    liftCard.className = 'lift-status-card';
-    liftCard.style.borderLeft = `5px solid ${statusColor}`;
-    liftCard.style.cursor = 'pointer';
-    liftCard.style.opacity = devData ? '1' : '0.6';
-    
-    const tempVal = (devData && devData.temperature && devData.temperature > 0) ? devData.temperature.toFixed(1) + "°C" : "--°C";
+    liftCard.className = devData ? 'device-card' : 'device-card is-offline';
+
+    const tempVal = (devData && devData.temperature && devData.temperature > 0) ? devData.temperature.toFixed(1) + " °C" : "-- °C";
     const doorStatusText = devData ? (devData.door_status || "Unknown") : offlineText;
-    
+    const doorClass = isOpen ? 'door-open' : (devData?.door_status === 'Closed' ? 'door-closed' : '');
+
     liftCard.innerHTML = `
-      <div class="lift-status-meta">
+      <div class="device-card-head">
         <h4>${devId.toUpperCase()}</h4>
         <span class="status-pill ${healthMeta.className}">${healthMeta.label}</span>
       </div>
-      <p>${tempLabel}: <b>${tempVal}</b></p>
-      <p>${doorLabel}: <span style="color:${statusColor}; font-weight:bold;">${doorStatusText}</span></p>
+      <div class="device-card-row"><span class="label">${tempLabel}</span><span class="value">${tempVal}</span></div>
+      <div class="device-card-row"><span class="label">${doorLabel}</span><span class="value ${doorClass}">${doorStatusText}</span></div>
     `;
     
     liftCard.onclick = () => {
@@ -257,13 +253,16 @@ function updateHistoryChart(deviceId, sensorLogs) {
   const labelHum = (dict?.humLabel || 'Humidity') + ' (%)';
 
   const labelPressure = (dict?.pressLabel || 'Pressure') + ' (hPa)';
+
+  // CVD-validated categorical palette: fixed slot order, only blue restepped per theme.
+  const isLight = document.body.classList.contains('light-mode');
   const metricConfigs = [
-    { key: 'temperature', label: labelTemp, color: '#38bdf8' },
-    { key: 'humidity', label: labelHum, color: '#22c55e' },
-    { key: 'pressure', label: labelPressure, color: '#f59e0b' },
-    { key: 'accel_x', label: 'Accel X', color: '#f97316' },
-    { key: 'accel_y', label: 'Accel Y', color: '#8b5cf6' },
-    { key: 'accel_z', label: 'Accel Z', color: '#ef4444' },
+    { key: 'temperature', label: labelTemp, color: isLight ? '#2a78d6' : '#3987e5' },
+    { key: 'humidity', label: labelHum, color: '#008300' },
+    { key: 'pressure', label: labelPressure, color: '#d55181' },
+    { key: 'accel_x', label: 'Accel X', color: '#c98500' },
+    { key: 'accel_y', label: 'Accel Y', color: '#199e70' },
+    { key: 'accel_z', label: 'Accel Z', color: '#d95926' },
   ];
 
   const datasets = metricConfigs
@@ -285,6 +284,10 @@ function updateHistoryChart(deviceId, sensorLogs) {
     return;
   }
 
+  const tickColor = isLight ? '#67717d' : '#7d8794';
+  const gridColor = isLight ? 'rgba(21, 25, 30, 0.08)' : 'rgba(238, 241, 244, 0.07)';
+  const tickFont = { family: "'IBM Plex Mono', ui-monospace, monospace", size: 11 };
+
   const historyChart = new Chart(ctx, {
     type: 'line',
     data: { labels: labels, datasets: datasets },
@@ -298,26 +301,30 @@ function updateHistoryChart(deviceId, sensorLogs) {
       plugins: {
         legend: {
           labels: {
-            color: document.body.classList.contains('light-mode') ? '#334155' : '#cbd5e1',
+            color: isLight ? '#3f4954' : '#b6bec7',
+            font: { family: "'IBM Plex Sans', system-ui, sans-serif", size: 12 },
+            boxWidth: 14,
+            boxHeight: 3,
           },
+        },
+        tooltip: {
+          backgroundColor: isLight ? '#15191e' : '#1a1e24',
+          titleFont: { family: "'IBM Plex Sans', system-ui, sans-serif" },
+          bodyFont: tickFont,
+          borderColor: isLight ? 'rgba(255, 255, 255, 0.12)' : 'rgba(238, 241, 244, 0.12)',
+          borderWidth: 1,
         },
       },
       scales: {
         x: {
-          ticks: {
-            color: document.body.classList.contains('light-mode') ? '#64748b' : '#94a3b8',
-          },
-          grid: {
-            color: document.body.classList.contains('light-mode') ? 'rgba(148, 163, 184, 0.15)' : 'rgba(148, 163, 184, 0.08)',
-          },
+          ticks: { color: tickColor, font: tickFont, maxRotation: 0, autoSkipPadding: 16 },
+          grid: { color: gridColor },
+          border: { color: gridColor },
         },
         y: {
-          ticks: {
-            color: document.body.classList.contains('light-mode') ? '#64748b' : '#94a3b8',
-          },
-          grid: {
-            color: document.body.classList.contains('light-mode') ? 'rgba(148, 163, 184, 0.15)' : 'rgba(148, 163, 184, 0.08)',
-          },
+          ticks: { color: tickColor, font: tickFont },
+          grid: { color: gridColor },
+          border: { color: gridColor },
         },
       },
     }
@@ -379,8 +386,10 @@ function applyFiltersAndRender() {
       document.getElementById('other-value').innerText = activeDeviceId ? `Active: ${activeDeviceId.toUpperCase()}` : "--";
     }
     if (document.getElementById('door-status-value')) {
-      document.getElementById('door-status-value').innerText = latest.door_status || "--";
-      document.getElementById('door-status-value').style.color = latest.door_status === "Open" ? "#ff6384" : "#4bc0c0";
+      const doorEl = document.getElementById('door-status-value');
+      doorEl.innerText = latest.door_status || "--";
+      doorEl.classList.toggle('door-open', latest.door_status === "Open");
+      doorEl.classList.toggle('door-closed', latest.door_status === "Closed");
     }
     if (document.getElementById('vibration-value')) {
       document.getElementById('vibration-value').innerHTML = `
@@ -408,8 +417,9 @@ function resetUIElements() {
   if (document.getElementById('pressure-value')) document.getElementById('pressure-value').innerText = "-- hPa";
   if (document.getElementById('other-value')) document.getElementById('other-value').innerText = dict?.selectDevicePrompt || "Please select a device";
   if (document.getElementById('door-status-value')) {
-    document.getElementById('door-status-value').innerText = "--";
-    document.getElementById('door-status-value').style.color = "#ffffff";
+    const doorEl = document.getElementById('door-status-value');
+    doorEl.innerText = "--";
+    doorEl.classList.remove('door-open', 'door-closed');
   }
   if (document.getElementById('vibration-value')) {
     document.getElementById('vibration-value').innerHTML = "X: -- | Y: -- | Z: --";

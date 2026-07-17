@@ -65,7 +65,7 @@ if (window.loginForm) {
     } catch (err) {
       if (window.loginError) { 
         window.loginError.textContent = getAuthTranslation('loginFailed', currentLang);
-        window.loginError.style.color = "#dc3545";
+        window.loginError.style.color = "var(--critical-text)";
         window.loginError.classList.remove('hidden'); 
       }
     }
@@ -73,6 +73,7 @@ if (window.loginForm) {
 }
 
 window.showDashboard = function() {
+  document.body.classList.add('is-authed');
   if (window.loginView) window.loginView.classList.add('hidden');
   if (window.settingsView) window.settingsView.classList.add('hidden');
   if (window.dashboardView) window.dashboardView.classList.remove('hidden');

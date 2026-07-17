@@ -5,451 +5,329 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <!-- Browser Tab Title ကို i18n ချိတ်ဆက်ရန် -->
     <title id="main-title" data-i18n="mainTitle">Elevator Information Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
     <link rel="stylesheet" href="./styles.css" />
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   </head>
   <body>
-    <div class="app-shell">
-      <header class="topbar">
-        <div class="topbar-brand">
-          <p class="topbar-kicker">IoT Operations</p>
-          <div>
+    <div class="app">
+      <!-- ◧ SIDEBAR : brand / navigation / session / preferences -->
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="4" y="2.5" width="16" height="19" rx="1.5" />
+              <line x1="12" y1="2.5" x2="12" y2="21.5" />
+              <polyline points="6.8,10.5 8.6,8.2 10.4,10.5" />
+              <polyline points="13.6,13.5 15.4,15.8 17.2,13.5" />
+            </svg>
+          </div>
+          <div class="brand-text">
+            <span class="brand-eyebrow">Elevator IoT</span>
             <h1 id="app-title" data-i18n="appTitle">Elevator Information Dashboard</h1>
-            <p class="topbar-subtitle">Operational monitoring, fleet health, and device administration in one control workspace.</p>
           </div>
         </div>
-        <div class="topbar-right">
-          <div class="topbar-meta">
-            <span class="meta-pill">Live telemetry</span>
-            <span class="meta-pill meta-pill-neutral">Cloud sync</span>
-          </div>
-          <div id="user-actions" class="user-actions hidden">
-            <span id="username-label" class="user-label"></span>
-            <button id="settings-button" class="button button-utility hidden" data-i18n="settingsBtn">Settings</button>
-            <button id="logout-button" class="button button-ghost" data-i18n="logoutBtn">Logout</button>
-          </div>
-          <div class="toolbar-controls">
-            <button id="theme-toggle" class="button button-ghost">Light</button>
-            <select id="language-select" class="button-select">
-              <option value="en">EN</option>
-              <option value="th">TH</option>
-              <option value="my">MY</option>
-              <option value="zh">ZH</option>
-              <option value="vi">VI</option>
-            </select>
-          </div>
-        </div>
-      </header>
 
-      <main class="page-shell">
+        <div id="user-actions" class="sidebar-session hidden">
+          <nav class="side-nav">
+            <span class="side-nav-label">Console</span>
+            <button type="button" id="settings-back-button" class="nav-item" data-i18n="backToDashboard">Back to Dashboard</button>
+            <button type="button" id="settings-button" class="nav-item hidden" data-i18n="settingsBtn">Settings</button>
+          </nav>
+          <div class="session-box">
+            <span id="username-label" class="session-user"></span>
+            <button type="button" id="logout-button" class="nav-item nav-item-quiet" data-i18n="logoutBtn">Logout</button>
+          </div>
+        </div>
+
+        <div class="sidebar-foot">
+          <button type="button" id="theme-toggle" class="chip-button">Light</button>
+          <select id="language-select" class="chip-select" aria-label="Language">
+            <option value="en">EN</option>
+            <option value="th">TH</option>
+            <option value="my">MY</option>
+            <option value="zh">ZH</option>
+            <option value="vi">VI</option>
+          </select>
+        </div>
+      </aside>
+
+      <!-- ◨ MAIN WORK AREA -->
+      <main class="main">
         <!-- 🔐 1. LOGIN VIEW SECTION -->
-        <section id="login-view" class="login-page centered-card">
-          <div class="login-layout">
-            <aside class="login-hero card">
-              <div class="login-hero-copy">
-                <p class="section-kicker">Operations platform</p>
-                <h2 data-i18n="loginMonitoring">Elevator Monitoring</h2>
-                <p class="info-text login-hero-text" data-i18n="loginDesc">Access your elevator status, history, and device controls through a secure dashboard.</p>
+        <section id="login-view" class="view login-view">
+          <div class="login-panel">
+            <aside class="login-brand-side">
+              <p class="eyebrow eyebrow-accent">Operations console</p>
+              <h2 data-i18n="loginMonitoring">Elevator Monitoring</h2>
+              <p class="info-text" data-i18n="loginDesc">Access your elevator status, history, and device controls through a secure dashboard.</p>
+              <div class="login-visual">
+                <img src="images/elevator.png" alt="Elevator illustration" />
               </div>
-              <div class="login-hero-visual">
-                <div class="illustration-graphic">
-                  <img src="images/elevator.png" alt="Elevator illustration" class="login-image" />
-                </div>
-              </div>
-              <div class="login-feature-list">
-                <div class="feature-card">
-                  <strong>Live fleet status</strong>
-                  <span>Track device freshness, health, and recent readings from one view.</span>
-                </div>
-                <div class="feature-card">
-                  <strong>Operational history</strong>
-                  <span>Filter by device and date range before exporting reports.</span>
-                </div>
-                <div class="feature-card">
-                  <strong>Role-based control</strong>
-                  <span>Separate monitoring, device administration, and account management.</span>
-                </div>
-              </div>
+              <dl class="login-spec">
+                <div><dt>Telemetry</dt><dd>Temperature · humidity · pressure · motion · door state</dd></div>
+                <div><dt>Refresh</dt><dd>Live polling every 5 seconds per ESP32 node</dd></div>
+                <div><dt>Access</dt><dd>Role-based: admin, manager, and operator accounts</dd></div>
+              </dl>
             </aside>
-            <div class="login-card card">
-              <div class="login-form-area">
-                <div class="login-form-header">
-                  <p class="section-kicker">Secure sign in</p>
-                  <span class="meta-pill meta-pill-neutral">Internal access</span>
-                </div>
-                <h2 id="login-title" data-i18n="signIn">Sign in</h2>
-                <p id="login-info" class="info-text" data-i18n="enterCredentials">Enter your credentials to continue.</p>
-                <form id="login-form" onsubmit="event.preventDefault();">
-                  <label>
-                    <span data-i18n="usernameLabel">Username</span>
-                    <input name="username" id="username" type="text" placeholder="" required />
-                  </label>
-                  <label>
-                    <span data-i18n="passwordLabel">Password</span>
-                    <input name="password" id="password" type="password" placeholder="" required />
-                  </label>
-                  <button type="submit" id="login-button" class="button button-primary" data-i18n="loginBtn">Login</button>
-                </form>
-                <div id="login-error" class="error-text hidden"></div>
-              </div>
+
+            <div class="login-form-side">
+              <p class="eyebrow">Secure sign in</p>
+              <h2 id="login-title" data-i18n="signIn">Sign in</h2>
+              <p id="login-info" class="info-text" data-i18n="enterCredentials">Enter your credentials to continue.</p>
+              <form id="login-form" onsubmit="event.preventDefault();">
+                <label>
+                  <span data-i18n="usernameLabel">Username</span>
+                  <input name="username" id="username" type="text" autocomplete="username" required />
+                </label>
+                <label>
+                  <span data-i18n="passwordLabel">Password</span>
+                  <input name="password" id="password" type="password" autocomplete="current-password" required />
+                </label>
+                <button type="submit" id="login-button" class="button button-primary button-block" data-i18n="loginBtn">Login</button>
+              </form>
+              <div id="login-error" class="error-text hidden"></div>
             </div>
           </div>
         </section>
 
         <!-- 📊 2. DASHBOARD VIEW SECTION -->
-        <section id="dashboard-view" class="dashboard-page hidden">
-          <div class="dashboard-hero-grid">
-            <div class="card overview-card">
-              <div class="overview-header">
-                <div>
-                  <p class="section-kicker" data-i18n="overviewTitle">Live system overview</p>
-                  <h2 id="dashboard-status-message" class="overview-heading" data-i18n="statusLoading">Loading live device status...</h2>
-                </div>
-                <span id="dashboard-status-badge" class="status-pill status-loading" data-i18n="statusLoading">Loading</span>
-              </div>
-              <div class="overview-metrics">
-                <div class="overview-metric">
-                  <span data-i18n="overviewDevices">Registered devices</span>
-                  <strong id="overview-device-count">0</strong>
-                </div>
-                <div class="overview-metric">
-                  <span data-i18n="overviewHealthy">Healthy now</span>
-                  <strong id="overview-online-count">0</strong>
-                </div>
-                <div class="overview-metric">
-                  <span data-i18n="overviewSelection">Selected device</span>
-                  <strong id="overview-selected-device">--</strong>
-                </div>
-                <div class="overview-metric">
-                  <span data-i18n="overviewUpdated">Last update</span>
-                  <strong id="overview-last-updated">--</strong>
-                </div>
-              </div>
+        <section id="dashboard-view" class="view hidden">
+          <header class="page-head">
+            <div class="page-head-text">
+              <p class="eyebrow" data-i18n="overviewTitle">Live system overview</p>
+              <h2 id="dashboard-status-message" data-i18n="statusLoading">Loading live device status...</h2>
             </div>
+            <span id="dashboard-status-badge" class="status-pill status-loading" data-i18n="statusLoading">Loading</span>
+          </header>
 
-            <div class="card command-card">
-              <div>
-                <p class="section-kicker">Command center</p>
-                <h2 class="command-title">Systematic monitoring workspace</h2>
-                <p class="info-text command-copy">Use the live fleet list to pivot quickly into device details, then refine history and exports from the analytics workspace below.</p>
+          <div class="kpi-row">
+            <div class="kpi">
+              <span class="kpi-label" data-i18n="overviewDevices">Registered devices</span>
+              <strong class="kpi-value" id="overview-device-count">0</strong>
+            </div>
+            <div class="kpi">
+              <span class="kpi-label" data-i18n="overviewHealthy">Healthy now</span>
+              <strong class="kpi-value" id="overview-online-count">0</strong>
+            </div>
+            <div class="kpi">
+              <span class="kpi-label" data-i18n="overviewSelection">Selected device</span>
+              <strong class="kpi-value kpi-value-sm" id="overview-selected-device">--</strong>
+            </div>
+            <div class="kpi">
+              <span class="kpi-label" data-i18n="overviewUpdated">Last update</span>
+              <strong class="kpi-value kpi-value-sm" id="overview-last-updated">--</strong>
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-head">
+              <h3 data-i18n="activeLiftsTitle">Active Elevators Status (Multi-ESP32 Nodes)</h3>
+              <span class="panel-note">Select a unit to focus telemetry</span>
+            </div>
+            <div id="lift-status-list" class="fleet-grid">
+              <p class="info-text" data-i18n="detectingNodes">Detecting active elevator ESP32 units...</p>
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-head">
+              <h3>Live telemetry</h3>
+              <span class="panel-note">Refreshed every 5 s</span>
+            </div>
+            <div class="readout-grid">
+              <div class="readout">
+                <span class="readout-label" data-i18n="tempLabel">Temperature</span>
+                <p class="readout-value" id="temperature-value">-- °C</p>
               </div>
-              <div class="command-grid">
-                <div class="command-stat">
-                  <span>Monitoring mode</span>
-                  <strong>Live operations</strong>
-                </div>
-                <div class="command-stat">
-                  <span>Analytics mode</span>
-                  <strong>History and export</strong>
-                </div>
-                <div class="command-stat">
-                  <span>Admin mode</span>
-                  <strong>Role-aware settings</strong>
-                </div>
+              <div class="readout">
+                <span class="readout-label" data-i18n="humLabel">Humidity</span>
+                <p class="readout-value" id="humidity-value">-- %</p>
+              </div>
+              <div class="readout">
+                <span class="readout-label" data-i18n="pressLabel">Pressure</span>
+                <p class="readout-value" id="pressure-value">-- hPa</p>
+              </div>
+              <div class="readout">
+                <span class="readout-label" data-i18n="doorLabel">Door Status</span>
+                <p class="readout-value" id="door-status-value">--</p>
+              </div>
+              <div class="readout readout-wide">
+                <span class="readout-label" data-i18n="vibrationLabel">Vibration / Real-time Motion (X, Y, Z Axis)</span>
+                <p class="readout-value readout-value-sm" id="vibration-value">X: -- | Y: -- | Z: --</p>
+              </div>
+              <div class="readout">
+                <span class="readout-label" data-i18n="latestConnectionLabel">Latest Device Connection</span>
+                <p class="readout-value readout-value-sm" id="other-value" data-i18n="noDataYet">No data yet</p>
               </div>
             </div>
           </div>
 
-          <div class="dashboard-workspace">
-            <div class="dashboard-primary">
-              <div class="card section-card">
-                <div class="section-heading-row">
-                  <div>
-                    <p class="section-kicker">Fleet monitor</p>
-                    <h3 class="section-title" data-i18n="activeLiftsTitle">Active Elevators Status (Multi-ESP32 Nodes)</h3>
-                  </div>
-                  <span class="meta-pill">Tap a device card to focus telemetry</span>
-                </div>
-                <div id="lift-status-list" class="lift-status-grid">
-                  <p class="info-text" style="margin: 0;" data-i18n="detectingNodes">Detecting active elevator ESP32 units...</p>
-                </div>
-              </div>
-
-              <div class="card section-card">
-                <div class="section-heading-row">
-                  <div>
-                    <p class="section-kicker">Live telemetry</p>
-                    <h3 class="section-title">Operational metrics</h3>
-                  </div>
-                  <span class="meta-pill meta-pill-neutral">Refreshed every 5 seconds</span>
-                </div>
-                <div class="dashboard-grid">
-                  <div class="card stat-card">
-                    <h3 data-i18n="tempLabel">Temperature</h3>
-                    <p id="temperature-value">-- °C</p>
-                  </div>
-                  <div class="card stat-card">
-                    <h3 data-i18n="humLabel">Humidity</h3>
-                    <p id="humidity-value">-- %</p>
-                  </div>
-                  <div class="card stat-card">
-                    <h3 data-i18n="pressLabel">Pressure</h3>
-                    <p id="pressure-value">-- hPa</p>
-                  </div>
-                  
-                  <div class="card stat-card">
-                    <h3 data-i18n="doorLabel">Door Status</h3>
-                    <p id="door-status-value" class="metric-emphasis">--</p>
-                  </div>
-
-                  <div class="card stat-card stat-card-wide">
-                    <h3 data-i18n="vibrationLabel">Vibration / Real-time Motion (X, Y, Z Axis)</h3>
-                    <p id="vibration-value" class="metric-inline">X: -- | Y: -- | Z: --</p>
-                  </div>
-
-                  <div class="card stat-card">
-                    <h3 data-i18n="latestConnectionLabel">Latest Device Connection</h3>
-                    <p id="other-value" data-i18n="noDataYet">No data yet</p>
-                  </div>
-                </div>
-              </div>
-
-              <div class="card analytics-card">
-                <div class="section-heading-row">
-                  <div>
-                    <p class="section-kicker">Analytics workspace</p>
-                    <h3 class="section-title" data-i18n="chartHeading">Sensor history</h3>
-                  </div>
-                  <span class="meta-pill meta-pill-neutral">Filter before export</span>
-                </div>
-
-                <div class="filter-card analytics-toolbar">
-                  <div class="filter-row">
-                    <label>
-                      <span data-i18n="startLabel">Start</span>
-                      <input id="start-date" type="date" />
-                    </label>
-                    <label>
-                      <span data-i18n="endLabel">End</span>
-                      <input id="end-date" type="date" />
-                    </label>
-                    <label>
-                      <span data-i18n="deviceLabel">Device</span>
-                      <select id="device-select">
-                        <option value="" data-i18n="allDevices">All devices</option>
-                      </select>
-                    </label>
-                    <button id="filter-button" class="button button-primary" data-i18n="applyButton">Apply</button>
-                  </div>
-                  
-                  <div class="action-row analytics-actions">
-                    <button id="export-csv" class="button button-secondary button-accent" data-i18n="exportCsv">Download CSV (Excel)</button>
-                    <button id="export-json" class="button button-secondary" data-i18n="exportJson">Download JSON</button>
-                  </div>
-                </div>
-
-                <div class="chart-card">
-                  <p id="chart-empty-state" class="chart-empty-state visible" data-i18n="chartEmptyState">Select a device to view recent history.</p>
-                  <canvas id="history-chart" height="220"></canvas>
-                </div>
-              </div>
+          <div class="panel">
+            <div class="panel-head">
+              <h3 data-i18n="chartHeading">Sensor history</h3>
+              <span class="panel-note" data-i18n="filterHeading">Filter history</span>
             </div>
 
-            <aside class="dashboard-secondary">
-              <div class="card side-panel-card">
-                <p class="section-kicker">Operator guidance</p>
-                <h3 class="section-title">How to use this workspace</h3>
-                <div class="insight-list">
-                  <div class="insight-item">
-                    <strong>1. Start with the fleet list</strong>
-                    <span>Choose the device card you want to investigate from the live operations grid.</span>
-                  </div>
-                  <div class="insight-item">
-                    <strong>2. Review the telemetry block</strong>
-                    <span>Confirm latest temperature, humidity, pressure, motion, and door state.</span>
-                  </div>
-                  <div class="insight-item">
-                    <strong>3. Filter and export</strong>
-                    <span>Use the analytics workspace for historical inspection and reporting.</span>
-                  </div>
-                </div>
-              </div>
+            <div class="filter-bar">
+              <label>
+                <span data-i18n="startLabel">Start</span>
+                <input id="start-date" type="date" />
+              </label>
+              <label>
+                <span data-i18n="endLabel">End</span>
+                <input id="end-date" type="date" />
+              </label>
+              <label>
+                <span data-i18n="deviceLabel">Device</span>
+                <select id="device-select">
+                  <option value="" data-i18n="allDevices">All devices</option>
+                </select>
+              </label>
+              <button type="button" id="filter-button" class="button button-primary" data-i18n="applyButton">Apply</button>
+              <span class="filter-bar-spacer"></span>
+              <button type="button" id="export-csv" class="button button-secondary" data-i18n="exportCsv">Download CSV (Excel)</button>
+              <button type="button" id="export-json" class="button button-secondary" data-i18n="exportJson">Download JSON</button>
+            </div>
 
-              <div class="card side-panel-card">
-                <p class="section-kicker">Design intent</p>
-                <h3 class="section-title">Corporate monitoring style</h3>
-                <div class="insight-list">
-                  <div class="insight-item">
-                    <strong>Simple hierarchy</strong>
-                    <span>Clear zones for overview, operations, analytics, and administration.</span>
-                  </div>
-                  <div class="insight-item">
-                    <strong>Systematic spacing</strong>
-                    <span>Reusable surfaces, consistent controls, and quiet color roles.</span>
-                  </div>
-                  <div class="insight-item">
-                    <strong>Actionable status</strong>
-                    <span>Warnings and stale states stay visible without overwhelming the operator.</span>
-                  </div>
-                </div>
-              </div>
-            </aside>
+            <div class="chart-wrap">
+              <p id="chart-empty-state" class="chart-empty-state visible" data-i18n="chartEmptyState">Select a device to view recent history.</p>
+              <canvas id="history-chart" height="220"></canvas>
+            </div>
           </div>
         </section>
 
         <!-- ⚙️ 3. ADMIN SETTINGS SECTION -->
-        <section id="settings-view" class="settings-page hidden">
-          <div class="settings-header">
-            <button type="button" id="settings-back-button" class="button button-ghost" data-i18n="backToDashboard">Back to Dashboard</button>
+        <section id="settings-view" class="view hidden">
+          <header class="page-head">
+            <div class="page-head-text">
+              <p class="eyebrow" data-i18n="settingsAccessTitle">Settings access</p>
+              <h2 id="settings-mode-heading">Admin access</h2>
+              <p id="settings-mode-copy" class="info-text">You can manage accounts, roles, and registered devices.</p>
+            </div>
+            <span id="settings-role-chip" class="status-pill status-online">Admin</span>
+          </header>
+
+          <div class="kpi-row kpi-row-3">
+            <div class="kpi">
+              <span class="kpi-label" data-i18n="settingsUsersSection">User administration</span>
+              <strong class="kpi-value kpi-value-sm" id="settings-user-scope">Full access</strong>
+            </div>
+            <div class="kpi">
+              <span class="kpi-label" data-i18n="settingsDevicesSection">Device administration</span>
+              <strong class="kpi-value kpi-value-sm" id="settings-device-scope">Full access</strong>
+            </div>
+            <div class="kpi">
+              <span class="kpi-label" data-i18n="settingsLastSync">Last sync</span>
+              <strong class="kpi-value kpi-value-sm" id="settings-last-sync">--</strong>
+            </div>
           </div>
 
-          <div class="settings-shell">
-            <div class="settings-main">
-              <div class="card settings-overview-card">
-                <div class="settings-overview-header">
-                  <div>
-                    <p class="section-kicker" data-i18n="settingsAccessTitle">Settings access</p>
-                    <h2 id="settings-mode-heading">Admin access</h2>
-                    <p id="settings-mode-copy" class="info-text">You can manage accounts, roles, and registered devices.</p>
-                  </div>
-                  <span id="settings-role-chip" class="status-pill status-online">Admin</span>
+          <div id="settings-status-banner" class="settings-status-banner hidden"></div>
+
+          <div class="settings-columns">
+            <div id="device-management-section" class="settings-column">
+              <div class="panel">
+                <div class="panel-head">
+                  <h3 data-i18n="deviceSettingsHeading">ESP32 Device Settings</h3>
+                  <span class="panel-note">Manager · Admin</span>
                 </div>
-                <div class="settings-overview-grid">
-                  <div class="overview-metric">
-                    <span data-i18n="settingsUsersSection">User administration</span>
-                    <strong id="settings-user-scope">Full access</strong>
-                  </div>
-                  <div class="overview-metric">
-                    <span data-i18n="settingsDevicesSection">Device administration</span>
-                    <strong id="settings-device-scope">Full access</strong>
-                  </div>
-                  <div class="overview-metric">
-                    <span data-i18n="settingsLastSync">Last sync</span>
-                    <strong id="settings-last-sync">--</strong>
-                  </div>
-                </div>
-                <div id="settings-status-banner" class="settings-status-banner hidden"></div>
+                <p class="info-text" data-i18n="deviceSettingsInfo">Register or rename ESP32 devices, and track status from each unit.</p>
+                <form id="create-device-form">
+                  <label>
+                    <span data-i18n="deviceKeyLabel">Device Key</span>
+                    <input name="deviceKey" id="new-device-key" type="text" placeholder="esp32-01" required />
+                  </label>
+                  <label>
+                    <span data-i18n="deviceNameLabel">Device Name</span>
+                    <input name="name" id="new-device-name" type="text" placeholder="Main Lobby Sensor" required />
+                  </label>
+                  <button type="submit" class="button button-primary" data-i18n="createDeviceBtn">Create Device</button>
+                </form>
+                <div id="device-error" class="error-text hidden"></div>
               </div>
-              
-              <div class="settings-grid">
-                <div id="device-management-section">
-                  <div class="card settings-card">
-                    <div class="section-heading-row">
-                      <div>
-                        <p class="section-kicker">Device administration</p>
-                        <h3 class="section-title" data-i18n="h2EspConfig">ESP32 Device Settings</h3>
-                      </div>
-                      <span class="meta-pill">Manager and admin</span>
-                    </div>
-                    <p class="info-text" data-i18n="pEspConfig">Register or rename ESP32 devices, and track status from each unit.</p>
-                    <form id="create-device-form">
-                      <label>
-                        <span data-i18n="lblDevKey">Device Key</span>
-                        <input name="deviceKey" id="new-device-key" type="text" placeholder="esp32-01" required />
-                      </label>
-                      <label>
-                        <span data-i18n="lblDevName">Device Name</span>
-                        <input name="name" id="new-device-name" type="text" placeholder="Main Lobby Sensor" required />
-                      </label>
-                      <button type="submit" class="button button-primary" data-i18n="btnCreateDev">Create Device</button>
-                    </form>
-                    <div id="device-error" class="error-text hidden"></div>
-                  </div>
 
-                  <div class="card settings-card">
-                    <div class="section-heading-row">
-                      <div>
-                        <p class="section-kicker">Registered assets</p>
-                        <h3 class="section-title" data-i18n="h2RegDev">Registered ESP32 Devices</h3>
-                      </div>
-                      <span class="meta-pill meta-pill-neutral">System inventory</span>
-                    </div>
-                    <table class="device-table">
-                      <thead>
-                        <tr>
-                          <th data-i18n="thId">ID</th>
-                          <th data-i18n="thKey">Key</th>
-                          <th data-i18n="thName">Name</th>
-                          <th data-i18n="thLastSeen">Last Seen</th>
-                          <th data-i18n="thStatus">Status</th>
-                          <th data-i18n="thActions">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody id="devices-table-body"></tbody>
-                    </table>
-                  </div>
+              <div class="panel">
+                <div class="panel-head">
+                  <h3 data-i18n="registeredDevicesHeading">Registered ESP32 Devices</h3>
+                  <span class="panel-note">Inventory</span>
                 </div>
-
-                <div id="user-management-section">
-                  <div class="card settings-card">
-                    <div class="section-heading-row">
-                      <div>
-                        <p class="section-kicker">Identity management</p>
-                        <h3 id="settings-heading" class="section-title" data-i18n="h2ExistAcc">Existing accounts</h3>
-                      </div>
-                      <span class="meta-pill">Admin only</span>
-                    </div>
-                    <p id="settings-info" class="info-text" data-i18n="adminSettingsInfo">Create accounts and manage roles for admin, manager, and user access.</p>
-                    <form id="create-user-form">
-                      <label>
-                        <span data-i18n="lblEmail">Email (optional for local DB, required for Supabase)</span>
-                        <input name="email" id="new-email" type="email" />
-                      </label>
-                      <label>
-                        <span data-i18n="lblUser">Username</span>
-                        <input name="username" id="new-username" type="text" required />
-                      </label>
-                      <label>
-                        <span data-i18n="lblPass">Password</span>
-                        <input name="password" id="new-password" type="password" required />
-                      </label>
-                      <label>
-                        <span data-i18n="lblRole">Role</span>
-                        <select name="role" id="new-role" required>
-                          <option value="admin" data-i18n="roleAdmin">Admin</option>
-                          <option value="manager" data-i18n="roleManager">Manager</option>
-                          <option value="user" data-i18n="roleUser" selected>User</option>
-                        </select>
-                      </label>
-                      <button type="submit" id="create-account-button" class="button button-primary" data-i18n="btnCreateAcc">Create Account</button>
-                    </form>
-                    <div id="settings-error" class="error-text hidden"></div>
-                  </div>
-
-                  <div class="card settings-card">
-                    <div class="section-heading-row">
-                      <div>
-                        <p class="section-kicker">Access directory</p>
-                        <h3 class="section-title" data-i18n="h2ExistAcc">Existing accounts</h3>
-                      </div>
-                      <span class="meta-pill meta-pill-neutral">Controlled access</span>
-                    </div>
-                    <table class="user-table">
-                      <thead>
-                        <tr>
-                          <th data-i18n="thId">ID</th>
-                          <th data-i18n="thUsername">Username</th>
-                          <th data-i18n="thRole">Role</th>
-                          <th data-i18n="thActions">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody id="users-table-body"></tbody>
-                    </table>
-                  </div>
+                <div class="table-scroll">
+                  <table class="device-table">
+                    <thead>
+                      <tr>
+                        <th data-i18n="thId">ID</th>
+                        <th data-i18n="thKey">Key</th>
+                        <th data-i18n="thName">Name</th>
+                        <th data-i18n="thLastSeen">Last Seen</th>
+                        <th>Status</th>
+                        <th data-i18n="thActions">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody id="devices-table-body"></tbody>
+                  </table>
                 </div>
               </div>
             </div>
 
-            <aside class="settings-side-panel">
-              <div class="card side-panel-card">
-                <p class="section-kicker">Administration notes</p>
-                <h3 class="section-title">System governance</h3>
-                <div class="insight-list">
-                  <div class="insight-item">
-                    <strong>Role-aware access</strong>
-                    <span>Managers can work on devices while user administration stays restricted to admins.</span>
-                  </div>
-                  <div class="insight-item">
-                    <strong>Stable operating flow</strong>
-                    <span>Changes are aligned with the live dashboard and current Supabase-backed device fleet.</span>
-                  </div>
-                  <div class="insight-item">
-                    <strong>Clean control surfaces</strong>
-                    <span>Administration is grouped into inventory, access, sync, and feedback zones.</span>
-                  </div>
+            <div id="user-management-section" class="settings-column">
+              <div class="panel">
+                <div class="panel-head">
+                  <h3 id="settings-heading" data-i18n="adminSettingsHeading">Admin Settings</h3>
+                  <span class="panel-note">Admin only</span>
+                </div>
+                <p id="settings-info" class="info-text" data-i18n="adminSettingsInfo">Create accounts and manage roles for admin, manager, and user access.</p>
+                <form id="create-user-form">
+                  <label>
+                    <span data-i18n="emailLabel">Email (optional for local DB, required for Supabase)</span>
+                    <input name="email" id="new-email" type="email" />
+                  </label>
+                  <label>
+                    <span data-i18n="usernameLabel">Username</span>
+                    <input name="username" id="new-username" type="text" required />
+                  </label>
+                  <label>
+                    <span data-i18n="passwordLabel">Password</span>
+                    <input name="password" id="new-password" type="password" required />
+                  </label>
+                  <label>
+                    <span data-i18n="roleLabel">Role</span>
+                    <select name="role" id="new-role" required>
+                      <option value="admin" data-i18n="roleAdmin">Admin</option>
+                      <option value="manager" data-i18n="roleManager">Manager</option>
+                      <option value="user" data-i18n="roleUser" selected>User</option>
+                    </select>
+                  </label>
+                  <button type="submit" id="create-account-button" class="button button-primary" data-i18n="createAccountBtn">Create Account</button>
+                </form>
+                <div id="settings-error" class="error-text hidden"></div>
+              </div>
+
+              <div class="panel">
+                <div class="panel-head">
+                  <h3 data-i18n="existingAccountsHeading">Existing accounts</h3>
+                  <span class="panel-note">Directory</span>
+                </div>
+                <div class="table-scroll">
+                  <table class="user-table">
+                    <thead>
+                      <tr>
+                        <th data-i18n="thId">ID</th>
+                        <th data-i18n="thUsername">Username</th>
+                        <th data-i18n="thRole">Role</th>
+                        <th data-i18n="thActions">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody id="users-table-body"></tbody>
+                  </table>
                 </div>
               </div>
-            </aside>
+            </div>
           </div>
         </section>
       </main>
@@ -458,11 +336,11 @@
     <!-- External Script Files Dependencies -->
     <script src="./app-state.js?v=1002"></script>
     <script src="./api-client.js?v=1003"></script>
-    <script src="./auth.js?v=999"></script>
+    <script src="./auth.js?v=1000"></script>
     <script src="./export.js?v=1001"></script>
-    <script src="./settings.js?v=999"></script>
-    
+    <script src="./settings.js?v=1000"></script>
+
     <!-- Main Script File (i18n Engine Inside) -->
-    <script src="./script.js?v=999"></script>
+    <script src="./script.js?v=1000"></script>
   </body>
 </html>

@@ -121,7 +121,7 @@ window.loadSettingsData = async function() {
               <td><b>${u.username}</b></td>
               <td><span class="badge badge-${u.role}">${roleText}</span></td>
               <td>
-                <button class="button button-danger btn-sm" style="color: #ffffff; background-color: #dc3545;" onclick="deleteUser(${u.id})">
+                <button class="button button-danger btn-sm" onclick="deleteUser(${u.id})">
                   ${deleteBtnText}
                 </button>
               </td>
@@ -153,19 +153,19 @@ window.loadSettingsData = async function() {
         devicesTableBody.innerHTML = devices.map(d => {
           const deviceKey = window.appState.getDeviceKey(d);
           const isOnline = activeDeviceIds.includes(deviceKey);
-          const statusBadge = isOnline 
-            ? `<span class="badge" style="background-color: #28a745; color: white; padding: 4px 8px; border-radius: 4px;">${onlineText}</span>`
-            : `<span class="badge" style="background-color: #6c757d; color: white; padding: 4px 8px; border-radius: 4px;">${offlineText}</span>`;
+          const statusBadge = isOnline
+            ? `<span class="badge badge-online">${onlineText}</span>`
+            : `<span class="badge badge-offline">${offlineText}</span>`;
 
           return `
             <tr>
               <td>${d.id}</td>
-              <td><code style="color: #01919d; font-weight: bold;">${deviceKey}</code></td>
+              <td><code>${deviceKey}</code></td>
               <td>${d.name || unnamedSensorText}</td>
               <td>${d.created_at ? new Date(d.created_at).toLocaleString() : neverText}</td>
               <td>${statusBadge}</td>
               <td>
-                <button class="button button-danger btn-sm" style="color: #ffffff; background-color: #dc3545;" onclick="deleteDevice('${d.id}')">
+                <button class="button button-danger btn-sm" onclick="deleteDevice('${d.id}')">
                   ${deleteBtnText}
                 </button>
               </td>
@@ -212,13 +212,13 @@ window.initSettingsEvents = function() {
         createUserForm.reset();
         if (settingsError) { 
           settingsError.textContent = getTranslation('userSuccess', currentLang); 
-          settingsError.style.color = "green"; 
+          settingsError.style.color = "var(--good-text)"; 
           settingsError.classList.remove('hidden'); 
         }
         setSettingsStatus(getTranslation('userSuccess', currentLang), 'success');
         window.loadSettingsData();
       } catch (err) {
-        if (settingsError) { settingsError.textContent = err.message; settingsError.style.color = "red"; settingsError.classList.remove('hidden'); }
+        if (settingsError) { settingsError.textContent = err.message; settingsError.style.color = "var(--critical-text)"; settingsError.classList.remove('hidden'); }
         setSettingsStatus(err.message, 'error');
       }
     });
@@ -236,13 +236,13 @@ window.initSettingsEvents = function() {
         createDeviceForm.reset();
         if (deviceError) { 
           deviceError.textContent = getTranslation('deviceSuccess', currentLang); 
-          deviceError.style.color = "green"; 
+          deviceError.style.color = "var(--good-text)"; 
           deviceError.classList.remove('hidden'); 
         }
         setSettingsStatus(getTranslation('deviceSuccess', currentLang), 'success');
         window.loadSettingsData();
       } catch (err) {
-        if (deviceError) { deviceError.textContent = err.message; deviceError.style.color = "red"; deviceError.classList.remove('hidden'); }
+        if (deviceError) { deviceError.textContent = err.message; deviceError.style.color = "var(--critical-text)"; deviceError.classList.remove('hidden'); }
         setSettingsStatus(err.message, 'error');
       }
     });
